@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'core/di/injection_container.dart' as di;
 import 'presentation/providers/app_provider.dart';
+import 'presentation/pages/onboarding/splash_screen.dart';
+import 'presentation/pages/onboarding/welcome_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,70 +21,44 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => di.sl<AppProvider>()),
       ],
       child: MaterialApp(
-        title: 'Clean Architecture Flutter',
+        title: 'Kidpool',
+        debugShowCheckedModeBanner: false,
         theme: ThemeData(
           primarySwatch: Colors.blue,
           useMaterial3: true,
         ),
-        home: const AppVersionScreen(),
+        home: const SplashNavigator(),
       ),
     );
   }
 }
 
-class AppVersionScreen extends StatefulWidget {
-  const AppVersionScreen({super.key});
+class SplashNavigator extends StatefulWidget {
+  const SplashNavigator({super.key});
 
   @override
-  State<AppVersionScreen> createState() => _AppVersionScreenState();
+  State<SplashNavigator> createState() => _SplashNavigatorState();
 }
 
-class _AppVersionScreenState extends State<AppVersionScreen> {
+class _SplashNavigatorState extends State<SplashNavigator> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => context.read<AppProvider>().fetchAppVersion(
-          roleId: 1,
-          device: 'ios',
-          versionNumber: '2.0',
-        ));
+    _navigateToNext();
+  }
+
+  void _navigateToNext() async {
+    // Show splash for 2 seconds
+    await Future.delayed(const Duration(seconds: 2));
+    if (mounted) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('App Version Info')),
-      body: Consumer<AppProvider>(
-        builder: (context, provider, child) {
-          if (provider.isLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (provider.errorMessage != null) {
-            return Center(child: Text('Error: ${provider.errorMessage}'));
-          }
-
-          if (provider.appVersion == null) {
-            return const Center(child: Text('No data found'));
-          }
-
-          final version = provider.appVersion!;
-          return ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              Text('Version: ${version.version}', style: Theme.of(context).textTheme.headlineSmall),
-              Text('API Base URL: ${version.apiBaseUrl}'),
-              Text('App Link: ${version.appLink}'),
-              Text('Payment Message: ${version.paymentMessage}'),
-              const Divider(),
-              const Text('Distance Radius Filters:', style: TextStyle(fontWeight: FontWeight.bold)),
-              ...version.distanceRadiusFilters.map((e) => ListTile(
-                    title: Text('${e.radius} km'),
-                  )),
-            ],
-          );
-        },
-      ),
-    );
+    return const SplashScreen();
   }
 }

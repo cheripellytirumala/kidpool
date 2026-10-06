@@ -1,11 +1,20 @@
 import 'package:flutter/material.dart';
+
 import '../../domain/entities/app_version_entity.dart';
 import '../../domain/usecases/get_app_version_usecase.dart';
+import '../../domain/usecases/send_otp_usecase.dart';
+import '../../domain/usecases/verify_otp_usecase.dart';
 
 class AppProvider extends ChangeNotifier {
   final GetAppVersionUsecase getAppVersionUsecase;
+  final SendOtpUsecase sendOtpUsecase;
+  final VerifyOtpUsecase verifyOtpUsecase;
 
-  AppProvider({required this.getAppVersionUsecase});
+  AppProvider({
+    required this.getAppVersionUsecase,
+    required this.sendOtpUsecase,
+    required this.verifyOtpUsecase,
+  });
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;
@@ -43,6 +52,66 @@ class AppProvider extends ChangeNotifier {
         _appVersion = data;
         _isLoading = false;
         notifyListeners();
+      },
+    );
+  }
+
+  Future<bool> sendOtp({
+    required String phoneNumber,
+    required String countryCode,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    final result = await sendOtpUsecase(
+      SendOtpParams(
+        phoneNumber: phoneNumber,
+        countryCode: countryCode,
+      ),
+    );
+
+    return result.fold(
+      (failure) {
+        _errorMessage = failure.message;
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      },
+      (success) {
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      },
+    );
+  }
+
+  Future<bool> verifyOtp({
+    required String phoneNumber,
+    required String otp,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    final result = await verifyOtpUsecase(
+      VerifyOtpParams(
+        phoneNumber: phoneNumber,
+        otp: otp,
+      ),
+    );
+
+    return result.fold(
+      (failure) {
+        _errorMessage = failure.message;
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      },
+      (success) {
+        _isLoading = false;
+        notifyListeners();
+        return true;
       },
     );
   }

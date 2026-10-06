@@ -1,4 +1,5 @@
 import 'package:dartz/dartz.dart';
+
 import '../../core/error/exceptions.dart';
 import '../../core/error/failures.dart';
 import '../../domain/entities/app_version_entity.dart';
@@ -29,6 +30,46 @@ class AppRepositoryImpl implements AppRepository {
       return Left(NetworkFailure(e.message));
     } on ParsingException catch (e) {
       return Left(ParsingFailure(e.message));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, bool>> sendOtp({
+    required String phoneNumber,
+    required String countryCode,
+  }) async {
+    try {
+      final result = await remoteDataSource.sendOtp(
+        phoneNumber: phoneNumber,
+        countryCode: countryCode,
+      );
+      return Right(result);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message ?? 'Server Error'));
+    } on NetworkException catch (e) {
+      return Left(NetworkFailure(e.message));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, bool>> verifyOtp({
+    required String phoneNumber,
+    required String otp,
+  }) async {
+    try {
+      final result = await remoteDataSource.verifyOtp(
+        phoneNumber: phoneNumber,
+        otp: otp,
+      );
+      return Right(result);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message ?? 'Server Error'));
+    } on NetworkException catch (e) {
+      return Left(NetworkFailure(e.message));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
