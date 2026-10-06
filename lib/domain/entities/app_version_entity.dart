@@ -1,59 +1,32 @@
 import 'package:equatable/equatable.dart';
 
 class AppVersionEntity extends Equatable {
-  final int paymentStatus;
-  final int productStatus;
-  final String paymentMessage;
-  final String productMessage;
-  final String apiBaseUrl;
-  final String version;
-  final String appLink;
-  final String deploymentStatus;
-  final String? userDetailsFlag;
-  final String searchRadius;
-  final List<DistanceRadiusEntity> distanceRadiusFilters;
-  final String isForcePaymentPage;
-  final int status;
+  final String platform;
+  final String latestVersion;
+  final String minSupportedVersion;
+  final String? storeUrl;
+  final String? updateMessage;
+  final bool isUpdateAvailable;
+  final bool isForceUpdate;
 
   const AppVersionEntity({
-    required this.paymentStatus,
-    required this.productStatus,
-    required this.paymentMessage,
-    required this.productMessage,
-    required this.apiBaseUrl,
-    required this.version,
-    required this.appLink,
-    required this.deploymentStatus,
-    this.userDetailsFlag,
-    required this.searchRadius,
-    required this.distanceRadiusFilters,
-    required this.isForcePaymentPage,
-    required this.status,
+    required this.platform,
+    required this.latestVersion,
+    required this.minSupportedVersion,
+    this.storeUrl,
+    this.updateMessage,
+    required this.isUpdateAvailable,
+    required this.isForceUpdate,
   });
 
   @override
   List<Object?> get props => [
-        paymentStatus,
-        productStatus,
-        paymentMessage,
-        productMessage,
-        apiBaseUrl,
-        version,
-        appLink,
-        deploymentStatus,
-        userDetailsFlag,
-        searchRadius,
-        distanceRadiusFilters,
-        isForcePaymentPage,
-        status,
+        platform,
+        latestVersion,
+        minSupportedVersion,
+        storeUrl,
+        updateMessage,
+        isUpdateAvailable,
+        isForceUpdate,
       ];
-}
-
-class DistanceRadiusEntity extends Equatable {
-  final int radius;
-
-  const DistanceRadiusEntity({required this.radius});
-
-  @override
-  List<Object?> get props => [radius];
 }

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 
 class SplashScreen extends StatelessWidget {
@@ -7,6 +9,7 @@ class SplashScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // "Dark = focus" — the splash is one of the dark moments in the system.
     return Scaffold(
       backgroundColor: AppColors.bgInverse,
       body: SafeArea(
@@ -21,7 +24,7 @@ class SplashScreen extends StatelessWidget {
                     height: 80,
                     decoration: BoxDecoration(
                       color: AppColors.lime,
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: AppRadius.mdAll,
                     ),
                     child: const Icon(
                       Icons.route,
@@ -29,16 +32,18 @@ class SplashScreen extends StatelessWidget {
                       color: AppColors.ink,
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: AppSpacing.x24),
                   Text(
                     'kidpool',
-                    style: AppTextStyles.displayL.copyWith(color: Colors.white),
+                    style: AppTextStyles.displayL
+                        .copyWith(color: AppColors.textOnDark),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.x12),
                   Text(
                     'Rides you can trust,\nfrom parents you know.',
                     textAlign: TextAlign.center,
-                    style: AppTextStyles.bodyM.copyWith(color: AppColors.textOnDarkMuted),
+                    style: AppTextStyles.bodyM
+                        .copyWith(color: AppColors.textOnDarkMuted),
                   ),
                 ],
               ),
@@ -46,42 +51,32 @@ class SplashScreen extends StatelessWidget {
             Align(
               alignment: Alignment.bottomCenter,
               child: Padding(
-                padding: const EdgeInsets.only(bottom: 40),
+                padding: const EdgeInsets.only(bottom: AppSpacing.x40),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Container(
-                      width: 24,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: AppColors.lime,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      width: 8,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: AppColors.charcoal,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      width: 8,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: AppColors.charcoal,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
+                    _dot(width: 24, color: AppColors.lime),
+                    const SizedBox(width: AppSpacing.x8),
+                    _dot(width: 8, color: AppColors.charcoal),
+                    const SizedBox(width: AppSpacing.x8),
+                    _dot(width: 8, color: AppColors.charcoal),
                   ],
                 ),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _dot({required double width, required Color color}) {
+    return Container(
+      width: width,
+      height: 4,
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: AppRadius.pill,
       ),
     );
   }

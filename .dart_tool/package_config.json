@@ -92,18 +92,6 @@
       "languageVersion": "2.12"
     },
     {
-      "name": "dio",
-      "rootUri": "file:///Users/iosdeveloper/.pub-cache/hosted/pub.dev/dio-5.11.1",
-      "packageUri": "lib/",
-      "languageVersion": "2.18"
-    },
-    {
-      "name": "dio_web_adapter",
-      "rootUri": "file:///Users/iosdeveloper/.pub-cache/hosted/pub.dev/dio_web_adapter-2.2.2",
-      "packageUri": "lib/",
-      "languageVersion": "3.3"
-    },
-    {
       "name": "equatable",
       "rootUri": "file:///Users/iosdeveloper/.pub-cache/hosted/pub.dev/equatable-2.1.0",
       "packageUri": "lib/",

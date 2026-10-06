@@ -26,7 +26,6 @@ class AppProvider extends ChangeNotifier {
   AppVersionEntity? get appVersion => _appVersion;
 
   Future<void> fetchAppVersion({
-    required int roleId,
     required String device,
     required String versionNumber,
   }) async {
@@ -36,7 +35,6 @@ class AppProvider extends ChangeNotifier {
 
     final result = await getAppVersionUsecase(
       GetAppVersionParams(
-        roleId: roleId,
         device: device,
         versionNumber: versionNumber,
       ),
@@ -88,6 +86,7 @@ class AppProvider extends ChangeNotifier {
 
   Future<bool> verifyOtp({
     required String phoneNumber,
+    required String countryCode,
     required String otp,
   }) async {
     _isLoading = true;
@@ -97,6 +96,7 @@ class AppProvider extends ChangeNotifier {
     final result = await verifyOtpUsecase(
       VerifyOtpParams(
         phoneNumber: phoneNumber,
+        countryCode: countryCode,
         otp: otp,
       ),
     );

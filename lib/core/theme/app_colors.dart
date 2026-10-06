@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+/// Colour tokens from the kidpool Figma design system
+/// (CarPooling_For_Student · 🎨 Design System · 📘 Foundations · Color).
 class AppColors {
   // Brand Colors
   static const Color lime = Color(0xFFC7FF2E);
@@ -20,4 +22,14 @@ class AppColors {
   static const Color statusSos = Color(0xFFFF4D3D);
   static const Color statusWarning = Color(0xFFFFB020);
   static const Color statusInfo = Color(0xFF5B8CFF);
+
+  // Semantic text roles used by the Figma components
+  // (text/primary, text/on-dark, text/on-lime, text/accent).
+  static const Color textPrimary = ink;
+  static const Color textOnDark = Color(0xFFFFFFFF);
+  static const Color textOnLime = ink;
+  static const Color textAccent = lime;
+
+  // Border used by the Outline button (1.5px, brand/ink).
+  static const Color borderStrong = ink;
 }

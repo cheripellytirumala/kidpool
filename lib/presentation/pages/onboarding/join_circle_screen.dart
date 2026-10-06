@@ -1,61 +1,108 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../providers/onboarding_provider.dart';
+import '../../widgets/app_badge.dart';
+import '../../widgets/app_chip.dart';
+import '../../widgets/app_icon_button.dart';
 import '../../widgets/primary_button.dart';
 
-class JoinCircleScreen extends StatelessWidget {
+class JoinCircleScreen extends StatefulWidget {
   const JoinCircleScreen({super.key});
 
   @override
+  State<JoinCircleScreen> createState() => _JoinCircleScreenState();
+}
+
+class _JoinCircleScreenState extends State<JoinCircleScreen> {
+  int _selected = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<OnboardingProvider>().loadCircles();
+    });
+  }
+
+  Future<void> _handleJoin() async {
+    final provider = context.read<OnboardingProvider>();
+    final circles = provider.circles;
+    final success = circles.isEmpty
+        ? await provider.startCircle()
+        : await provider
+            .joinCircle(circles[_selected.clamp(0, circles.length - 1)]);
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      success
+          ? SnackBar(
+              content: Text(
+                provider.ownsJoinedCircle
+                    ? "Your circle is ready. Other parents can now ask to join."
+                    : 'Request sent. The circle owner will approve you.',
+              ),
+            )
+          : SnackBar(
+              content:
+                  Text(provider.errorMessage ?? 'Could not join the circle'),
+              backgroundColor: AppColors.statusSos,
+            ),
+    );
+  }
+
+  String _buttonText(OnboardingProvider provider) {
+    if (provider.joinedCircle != null) {
+      return provider.ownsJoinedCircle ? "You're in" : 'Request sent';
+    }
+    if (provider.isLoading) return 'Please wait...';
+    return provider.circles.isEmpty ? 'Start a circle' : 'Join circle';
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final provider = context.watch<OnboardingProvider>();
+    final schoolName = provider.circleSchool?.name ?? 'your school';
+    final circles = provider.circles;
+
     return Scaffold(
       backgroundColor: AppColors.bgScreen,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: CircleAvatar(
-            backgroundColor: AppColors.bgSurface,
-            child: IconButton(
-              icon: const Icon(Icons.arrow_back, color: AppColors.ink, size: 20),
-              onPressed: () => Navigator.pop(context),
-            ),
-          ),
-        ),
-      ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: AppSpacing.screenGutter,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 20),
-              Text(
-                'Join your\nschool circle',
-                style: AppTextStyles.headingH1.copyWith(fontSize: 32),
+              const SizedBox(height: AppSpacing.x8),
+              AppIconButton(
+                icon: Icons.arrow_back,
+                onPressed: () => Navigator.pop(context),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.x32),
+              Text('Join your\nschool circle', style: AppTextStyles.headingH1),
+              const SizedBox(height: AppSpacing.x12),
               Text(
-                'Only verified parents near Lincoln Elementary can see your requests.',
-                style: AppTextStyles.bodyM.copyWith(color: AppColors.textSecondary),
+                'Only verified parents near $schoolName can see your requests.',
+                style: AppTextStyles.bodyM
+                    .copyWith(color: AppColors.textSecondary),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: AppSpacing.x32),
               Expanded(
                 child: Container(
                   width: double.infinity,
+                  clipBehavior: Clip.antiAlias,
                   decoration: BoxDecoration(
                     color: AppColors.bgInverse,
-                    borderRadius: BorderRadius.circular(32),
+                    borderRadius: AppRadius.xlAll,
                   ),
                   child: Stack(
                     children: [
-                      // Placeholder for map background
-                      Center(
-                        child: CustomPaint(
-                          painter: CircleGridPainter(),
-                          size: const Size(double.infinity, double.infinity),
-                        ),
+                      // "Dark = focus" — the map goes dark so the circle pops.
+                      Positioned.fill(
+                        child: CustomPaint(painter: CircleGridPainter()),
                       ),
                       Center(
                         child: Container(
@@ -66,16 +113,14 @@ class JoinCircleScreen extends StatelessWidget {
                             border: Border.all(
                               color: AppColors.lime.withOpacity(0.5),
                               width: 2,
-                              style: BorderStyle.solid,
                             ),
                           ),
                           child: Container(
-                            margin: const EdgeInsets.all(4),
+                            margin: const EdgeInsets.all(AppSpacing.x4),
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               border: Border.all(
                                 color: AppColors.lime.withOpacity(0.2),
-                                width: 1,
                               ),
                             ),
                           ),
@@ -85,50 +130,64 @@ class JoinCircleScreen extends StatelessWidget {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.location_on, color: AppColors.lime, size: 32),
-                            const SizedBox(height: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.people, size: 14, color: AppColors.ink),
-                                  const SizedBox(width: 4),
-                                  Text('142 verified parents', style: AppTextStyles.labelS),
-                                ],
-                              ),
+                            const Icon(
+                              Icons.location_on,
+                              color: AppColors.lime,
+                              size: 32,
+                            ),
+                            const SizedBox(height: AppSpacing.x8),
+                            AppBadge(
+                              label: circles.length == 1
+                                  ? '1 active circle'
+                                  : '${circles.length} active circles',
+                              tone: AppBadgeTone.light,
                             ),
                           ],
                         ),
                       ),
                       Positioned(
-                        bottom: 24,
-                        left: 24,
-                        right: 24,
+                        bottom: AppSpacing.x24,
+                        left: AppSpacing.x24,
+                        right: AppSpacing.x24,
                         child: Container(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(AppSpacing.x16),
                           decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
+                            color: AppColors.bgScreen,
+                            borderRadius: AppRadius.mdAll,
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Active circles', style: AppTextStyles.labelM),
-                              const SizedBox(height: 12),
-                              Row(
-                                children: [
-                                  _buildCircleTag('7:45 AM'),
-                                  const SizedBox(width: 8),
-                                  _buildCircleTag('8:00 AM', isSelected: true),
-                                  const SizedBox(width: 8),
-                                  _buildCircleTag('8:15 AM'),
-                                ],
+                              Text(
+                                'Active circles',
+                                style: AppTextStyles.labelM,
                               ),
+                              const SizedBox(height: AppSpacing.x12),
+                              if (circles.isEmpty)
+                                Text(
+                                  provider.isLoading
+                                      ? 'Loading circles...'
+                                      : 'No circles here yet. Start the first one.',
+                                  style: AppTextStyles.bodyS.copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
+                                )
+                              else
+                                Wrap(
+                                  spacing: AppSpacing.x8,
+                                  runSpacing: AppSpacing.x8,
+                                  children: [
+                                    for (int i = 0; i < circles.length; i++)
+                                      AppChip(
+                                        label: circles[i].name,
+                                        selected: _selected == i,
+                                        onTap: provider.joinedCircle == null
+                                            ? () =>
+                                                setState(() => _selected = i)
+                                            : null,
+                                      ),
+                                  ],
+                                ),
                             ],
                           ),
                         ),
@@ -137,32 +196,18 @@ class JoinCircleScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: AppSpacing.x32),
               PrimaryButton(
-                text: 'Join circle',
-                onPressed: () {
-                  // Complete onboarding
-                },
+                text: _buttonText(provider),
+                onPressed: provider.isLoading ||
+                        provider.joinedCircle != null ||
+                        provider.circleSchool == null
+                    ? null
+                    : _handleJoin,
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: AppSpacing.x24),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCircleTag(String time, {bool isSelected = false}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: isSelected ? AppColors.ink : AppColors.bgSurface,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        time,
-        style: AppTextStyles.labelS.copyWith(
-          color: isSelected ? Colors.white : AppColors.ink,
         ),
       ),
     );
@@ -173,7 +218,7 @@ class CircleGridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = AppColors.charcoal.withOpacity(0.3)
+      ..color = AppColors.bgInverseRaised
       ..strokeWidth = 1;
 
     const spacing = 40.0;

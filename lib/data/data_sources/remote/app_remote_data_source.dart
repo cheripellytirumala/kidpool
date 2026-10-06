@@ -1,18 +1,12 @@
-import 'dart:math';
-
-import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/constants/api_constants.dart';
 import '../../../core/error/exceptions.dart';
-import '../../../core/network/api_client.dart';
 import '../../models/app_version_model.dart';
+import 'supabase_guard.dart';
 
 abstract class AppRemoteDataSource {
-  Future<AppVersionModel> getAppVersion({
-    required int roleId,
-    required String device,
-    required String versionNumber,
-  });
+  Future<AppVersionModel> getAppVersion({required String device});
 
   Future<bool> sendOtp({
     required String phoneNumber,
@@ -21,39 +15,31 @@ abstract class AppRemoteDataSource {
 
   Future<bool> verifyOtp({
     required String phoneNumber,
+    required String countryCode,
     required String otp,
   });
 }
 
 class AppRemoteDataSourceImpl implements AppRemoteDataSource {
-  final ApiClient apiClient;
-  static String? _lastGeneratedOtp;
+  final SupabaseClient supabase;
 
-  AppRemoteDataSourceImpl({required this.apiClient});
+  AppRemoteDataSourceImpl({required this.supabase});
 
   @override
-  Future<AppVersionModel> getAppVersion({
-    required int roleId,
-    required String device,
-    required String versionNumber,
-  }) async {
-    final response = await apiClient.post(
-      ApiConstants.getAppVersion,
-      queryParameters: {
-        ApiConstants.roleId: roleId,
-        ApiConstants.device: device,
-        ApiConstants.versionNumber: versionNumber,
-      },
-    );
+  Future<AppVersionModel> getAppVersion({required String device}) async {
+    final Map<String, dynamic>? row = await guardSupabase(() => supabase
+        .from(ApiConstants.appVersionsTable)
+        .select()
+        .eq(ApiConstants.platform, device)
+        .maybeSingle());
 
-    if (response.data != null) {
-      try {
-        return AppVersionModel.fromJson(response.data);
-      } catch (e) {
-        throw ParsingException('Failed to parse app version response');
-      }
-    } else {
-      throw ServerException(message: 'Empty response from server');
+    if (row == null) {
+      throw ServerException(message: 'No version info for $device');
+    }
+    try {
+      return AppVersionModel.fromJson(row);
+    } catch (e) {
+      throw ParsingException('Failed to parse app version response');
     }
   }
 
@@ -62,41 +48,32 @@ class AppRemoteDataSourceImpl implements AppRemoteDataSource {
     required String phoneNumber,
     required String countryCode,
   }) async {
-    // Generate a 6-digit verification code locally
-    final String otp = _generateOtp();
-    _lastGeneratedOtp = otp;
-
-    if (kDebugMode) {
-      print('-----------------------------------------');
-      print(
-          'LOCAL DEV: Verification code for $countryCode$phoneNumber is: $otp');
-      print('-----------------------------------------');
-    }
-
-    // Simulate network delay
-    await Future.delayed(const Duration(seconds: 1));
-
+    await guardSupabase(() => supabase.auth.signInWithOtp(
+          phone: _toE164(countryCode, phoneNumber),
+        ));
     return true;
   }
 
   @override
   Future<bool> verifyOtp({
     required String phoneNumber,
+    required String countryCode,
     required String otp,
   }) async {
-    // Simulate verification delay
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    if (_lastGeneratedOtp != null && _lastGeneratedOtp == otp) {
-      return true;
-    } else {
+    final response = await guardSupabase(() => supabase.auth.verifyOTP(
+          phone: _toE164(countryCode, phoneNumber),
+          token: otp,
+          type: OtpType.sms,
+        ));
+    if (response.session == null) {
       throw ServerException(message: 'Wrong code entered. Please try again.');
     }
+    return true;
   }
 
-  String _generateOtp() {
-    final random = Random();
-    final code = 100000 + random.nextInt(900000);
-    return code.toString();
+  String _toE164(String countryCode, String phoneNumber) {
+    final digits = phoneNumber.replaceAll(RegExp(r'\D'), '');
+    final code = countryCode.replaceAll(RegExp(r'\D'), '');
+    return '+$code$digits';
   }
 }

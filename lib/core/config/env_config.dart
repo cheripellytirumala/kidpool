@@ -3,25 +3,23 @@ enum Environment { dev, staging, prod }
 class EnvConfig {
   static Environment environment = Environment.dev;
 
-  static String get adminBaseUrl {
+  static String get supabaseUrl {
     switch (environment) {
       case Environment.dev:
-        return 'https://admin.ebounti.com/api/';
       case Environment.staging:
-        return 'https://admin.ebounti.com/api/'; // Example
       case Environment.prod:
-        return 'https://admin.ebounti.com/api/'; // Example
+        return 'https://qktomioeszdqrgpcacvm.supabase.co';
     }
   }
 
-  static String get apiBaseUrl {
+  // Publishable key: safe to ship in the client. Never put a secret or
+  // service_role key here.
+  static String get supabasePublishableKey {
     switch (environment) {
       case Environment.dev:
-        return 'https://groceriesapidev.ebounti.com/api/';
       case Environment.staging:
-        return 'https://groceriesapidev.ebounti.com/api/';
       case Environment.prod:
-        return 'https://groceriesapidev.ebounti.com/api/';
+        return 'sb_publishable_ZpTwf-Gf-QWtAyI2bJzIpg_b_OKxli4';
     }
   }
 }
