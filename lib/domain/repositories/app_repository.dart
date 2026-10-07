@@ -5,7 +5,6 @@ import '../entities/app_version_entity.dart';
 
 abstract class AppRepository {
   Future<Either<Failure, AppVersionEntity>> getAppVersion({
-    required int roleId,
     required String device,
     required String versionNumber,
   });
@@ -17,6 +16,7 @@ abstract class AppRepository {
 
   Future<Either<Failure, bool>> verifyOtp({
     required String phoneNumber,
+    required String countryCode,
     required String otp,
   });
 }

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'core/di/injection_container.dart' as di;
+import 'core/theme/app_theme.dart';
 import 'presentation/providers/app_provider.dart';
+import 'presentation/providers/onboarding_provider.dart';
+import 'presentation/providers/verification_provider.dart';
 import 'presentation/pages/onboarding/splash_screen.dart';
 import 'presentation/pages/onboarding/welcome_screen.dart';
 
@@ -19,14 +22,13 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => di.sl<AppProvider>()),
+        ChangeNotifierProvider(create: (_) => di.sl<OnboardingProvider>()),
+        ChangeNotifierProvider(create: (_) => VerificationProvider()),
       ],
       child: MaterialApp(
         title: 'Kidpool',
         debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
-          useMaterial3: true,
-        ),
+        theme: AppTheme.light,
         home: const SplashNavigator(),
       ),
     );

@@ -5,8 +5,11 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../providers/app_provider.dart';
+import '../../widgets/app_icon_button.dart';
+import '../../widgets/fill_scroll_view.dart';
 import '../../widgets/primary_button.dart';
 import 'choose_user_type_screen.dart';
 
@@ -31,6 +34,9 @@ class _VerifyScreenState extends State<VerifyScreen> {
 
   Timer? _timer;
   int _secondsRemaining = 30;
+  bool _resending = false;
+
+  bool get _canResend => _secondsRemaining == 0 && !_resending;
 
   @override
   void initState() {
@@ -45,24 +51,37 @@ class _VerifyScreenState extends State<VerifyScreen> {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return;
-      setState(() {
-        if (_secondsRemaining > 0) {
-          _secondsRemaining--;
-        } else {
-          _timer?.cancel();
-          _resendCode();
-        }
-      });
+      setState(() => _secondsRemaining--);
+      // At 0 the countdown just stops; a new code is only sent when the user
+      // taps "Resend code".
+      if (_secondsRemaining <= 0) timer.cancel();
     });
   }
 
   Future<void> _resendCode() async {
+    if (!_canResend) return;
+    setState(() => _resending = true);
     final provider = context.read<AppProvider>();
-    await provider.sendOtp(
+    final sent = await provider.sendOtp(
       phoneNumber: widget.phoneNumber ?? '',
       countryCode: widget.countryCode ?? '',
     );
-    _startTimer();
+    if (!mounted) return;
+    setState(() => _resending = false);
+    if (sent) {
+      for (final controller in _controllers) {
+        controller.clear();
+      }
+      _focusNodes.first.requestFocus();
+      _startTimer();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('A new code is on its way')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(provider.errorMessage ?? 'Failed to resend')),
+      );
+    }
   }
 
   void _handleVerify() async {
@@ -77,6 +96,7 @@ class _VerifyScreenState extends State<VerifyScreen> {
     final provider = context.read<AppProvider>();
     final success = await provider.verifyOtp(
       phoneNumber: widget.phoneNumber ?? '',
+      countryCode: widget.countryCode ?? '',
       otp: otp,
     );
 
@@ -88,7 +108,7 @@ class _VerifyScreenState extends State<VerifyScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(provider.errorMessage ?? 'Wrong code entered'),
-          backgroundColor: Colors.redAccent,
+          backgroundColor: AppColors.statusSos,
         ),
       );
     }
@@ -119,48 +139,36 @@ class _VerifyScreenState extends State<VerifyScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bgScreen,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: CircleAvatar(
-            backgroundColor: AppColors.bgSurface,
-            child: IconButton(
-              icon:
-                  const Icon(Icons.arrow_back, color: AppColors.ink, size: 20),
-              onPressed: () => Navigator.pop(context),
-            ),
-          ),
-        ),
-      ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
+          padding: AppSpacing.screenGutter,
+          child: FillScrollView(
+              child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 20),
-              Text(
-                'Enter the\n6-digit code',
-                style: AppTextStyles.headingH1.copyWith(fontSize: 32),
+              const SizedBox(height: AppSpacing.x8),
+              AppIconButton(
+                icon: Icons.arrow_back,
+                onPressed: () => Navigator.pop(context),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.x32),
+              Text('Enter the\n6-digit code', style: AppTextStyles.headingH1),
+              const SizedBox(height: AppSpacing.x12),
               Text(
                 'Sent to ${widget.countryCode ?? ''} ${widget.phoneNumber ?? ''}',
                 style: AppTextStyles.bodyM
                     .copyWith(color: AppColors.textSecondary),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: AppSpacing.x32),
+              // Boxes share the row's width so all six fit on narrow phones.
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: List.generate(6, (index) {
-                  return Container(
-                    width: 45,
-                    height: 56,
+                  final box = Container(
+                    height: 60,
+                    alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: AppColors.bgSurface,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: AppRadius.smAll,
                     ),
                     child: TextField(
                       controller: _controllers[index],
@@ -168,31 +176,67 @@ class _VerifyScreenState extends State<VerifyScreen> {
                       onChanged: (value) => _onChanged(value, index),
                       textAlign: TextAlign.center,
                       keyboardType: TextInputType.number,
+                      cursorColor: AppColors.ink,
                       inputFormatters: [
                         FilteringTextInputFormatter.digitsOnly,
                         LengthLimitingTextInputFormatter(1),
                       ],
                       decoration: const InputDecoration(
                         border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
                         counterText: '',
+                        isDense: true,
+                        contentPadding: EdgeInsets.zero,
                       ),
                       style: AppTextStyles.headingH2,
                     ),
                   );
+                  return Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.only(
+                        left: index == 0 ? 0 : AppSpacing.x8,
+                      ),
+                      child: box,
+                    ),
+                  );
                 }),
               ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  const Icon(Icons.refresh,
-                      size: 16, color: AppColors.textSecondary),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Resend code in 0:${_secondsRemaining.toString().padLeft(2, '0')}',
-                    style: AppTextStyles.labelS
-                        .copyWith(color: AppColors.textSecondary),
+              const SizedBox(height: AppSpacing.x24),
+              // Counts down, then becomes a tappable "Resend code".
+              GestureDetector(
+                onTap: _canResend ? _resendCode : null,
+                behavior: HitTestBehavior.opaque,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.x8),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.refresh,
+                        size: 16,
+                        color: _canResend
+                            ? AppColors.textPrimary
+                            : AppColors.textSecondary,
+                      ),
+                      const SizedBox(width: AppSpacing.x8),
+                      Text(
+                        _resending
+                            ? 'Sending…'
+                            : _secondsRemaining > 0
+                                ? 'Resend code in 0:${_secondsRemaining.toString().padLeft(2, '0')}'
+                                : 'Resend code',
+                        style: AppTextStyles.labelS.copyWith(
+                          color: _canResend
+                              ? AppColors.textPrimary
+                              : AppColors.textSecondary,
+                          decoration: _canResend
+                              ? TextDecoration.underline
+                              : TextDecoration.none,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
               const Spacer(),
               Consumer<AppProvider>(
@@ -205,9 +249,9 @@ class _VerifyScreenState extends State<VerifyScreen> {
                   );
                 },
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: AppSpacing.x24),
             ],
-          ),
+          )),
         ),
       ),
     );

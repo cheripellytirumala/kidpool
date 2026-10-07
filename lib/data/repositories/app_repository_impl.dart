@@ -13,17 +13,12 @@ class AppRepositoryImpl implements AppRepository {
 
   @override
   Future<Either<Failure, AppVersionEntity>> getAppVersion({
-    required int roleId,
     required String device,
     required String versionNumber,
   }) async {
     try {
-      final model = await remoteDataSource.getAppVersion(
-        roleId: roleId,
-        device: device,
-        versionNumber: versionNumber,
-      );
-      return Right(model.toEntity());
+      final model = await remoteDataSource.getAppVersion(device: device);
+      return Right(model.toEntity(currentVersion: versionNumber));
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message ?? 'Server Error'));
     } on NetworkException catch (e) {
@@ -58,11 +53,13 @@ class AppRepositoryImpl implements AppRepository {
   @override
   Future<Either<Failure, bool>> verifyOtp({
     required String phoneNumber,
+    required String countryCode,
     required String otp,
   }) async {
     try {
       final result = await remoteDataSource.verifyOtp(
         phoneNumber: phoneNumber,
+        countryCode: countryCode,
         otp: otp,
       );
       return Right(result);

@@ -1,14 +1,13 @@
 class ApiConstants {
-  static const String adminBaseUrl = 'https://admin.ebounti.com/api/';
-  static const String devBaseUrl = 'https://groceriesapidev.ebounti.com/api/';
+  // Tables
+  static const String appVersionsTable = 'app_versions';
+  static const String profilesTable = 'profiles';
+  static const String schoolsTable = 'schools';
+  static const String kidsTable = 'kids';
+  static const String kidHealthTable = 'kid_health';
+  static const String circlesTable = 'circles';
+  static const String circleMembersTable = 'circle_members';
 
-  static const String getAppVersion = 'getAppVersion';
-  static const String sendOtp = 'sendOtp';
-
-  // Query Parameters / Body Keys
-  static const String roleId = 'role_id';
-  static const String device = 'device';
-  static const String versionNumber = 'version_number';
-  static const String phoneNumber = 'phone_number';
-  static const String countryCode = 'country_code';
+  // Columns
+  static const String platform = 'platform';
 }

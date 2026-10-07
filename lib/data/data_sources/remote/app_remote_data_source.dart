@@ -1,18 +1,15 @@
-import 'dart:math';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'package:flutter/foundation.dart';
-
+import '../../../core/config/env_config.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/error/exceptions.dart';
-import '../../../core/network/api_client.dart';
+import '../../../core/utils/us_phone.dart';
 import '../../models/app_version_model.dart';
+import '../local/dev_otp_service.dart';
+import 'supabase_guard.dart';
 
 abstract class AppRemoteDataSource {
-  Future<AppVersionModel> getAppVersion({
-    required int roleId,
-    required String device,
-    required String versionNumber,
-  });
+  Future<AppVersionModel> getAppVersion({required String device});
 
   Future<bool> sendOtp({
     required String phoneNumber,
@@ -21,39 +18,33 @@ abstract class AppRemoteDataSource {
 
   Future<bool> verifyOtp({
     required String phoneNumber,
+    required String countryCode,
     required String otp,
   });
 }
 
 class AppRemoteDataSourceImpl implements AppRemoteDataSource {
-  final ApiClient apiClient;
-  static String? _lastGeneratedOtp;
+  final SupabaseClient supabase;
+  final DevOtpService devOtp;
 
-  AppRemoteDataSourceImpl({required this.apiClient});
+  AppRemoteDataSourceImpl({required this.supabase, DevOtpService? devOtp})
+      : devOtp = devOtp ?? DevOtpService();
 
   @override
-  Future<AppVersionModel> getAppVersion({
-    required int roleId,
-    required String device,
-    required String versionNumber,
-  }) async {
-    final response = await apiClient.post(
-      ApiConstants.getAppVersion,
-      queryParameters: {
-        ApiConstants.roleId: roleId,
-        ApiConstants.device: device,
-        ApiConstants.versionNumber: versionNumber,
-      },
-    );
+  Future<AppVersionModel> getAppVersion({required String device}) async {
+    final Map<String, dynamic>? row = await guardSupabase(() => supabase
+        .from(ApiConstants.appVersionsTable)
+        .select()
+        .eq(ApiConstants.platform, device)
+        .maybeSingle());
 
-    if (response.data != null) {
-      try {
-        return AppVersionModel.fromJson(response.data);
-      } catch (e) {
-        throw ParsingException('Failed to parse app version response');
-      }
-    } else {
-      throw ServerException(message: 'Empty response from server');
+    if (row == null) {
+      throw ServerException(message: 'No version info for $device');
+    }
+    try {
+      return AppVersionModel.fromJson(row);
+    } catch (e) {
+      throw ParsingException('Failed to parse app version response');
     }
   }
 
@@ -62,41 +53,53 @@ class AppRemoteDataSourceImpl implements AppRemoteDataSource {
     required String phoneNumber,
     required String countryCode,
   }) async {
-    // Generate a 6-digit verification code locally
-    final String otp = _generateOtp();
-    _lastGeneratedOtp = otp;
-
-    if (kDebugMode) {
-      print('-----------------------------------------');
-      print(
-          'LOCAL DEV: Verification code for $countryCode$phoneNumber is: $otp');
-      print('-----------------------------------------');
+    final phone = _toE164(countryCode, phoneNumber);
+    if (EnvConfig.useDevOtp) {
+      devOtp.send(phone);
+      return true;
     }
-
-    // Simulate network delay
-    await Future.delayed(const Duration(seconds: 1));
-
+    await guardSupabase(() => supabase.auth.signInWithOtp(phone: phone));
     return true;
   }
 
   @override
   Future<bool> verifyOtp({
     required String phoneNumber,
+    required String countryCode,
     required String otp,
   }) async {
-    // Simulate verification delay
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    if (_lastGeneratedOtp != null && _lastGeneratedOtp == otp) {
+    if (EnvConfig.useDevOtp) {
+      devOtp.verify(_toE164(countryCode, phoneNumber), otp);
+      // Onboarding writes rows owned by the current user, so dev needs a real
+      // session. Requires Anonymous sign-ins to be enabled in Supabase Auth.
+      if (supabase.auth.currentSession == null) {
+        try {
+          await supabase.auth.signInAnonymously();
+        } on AuthException catch (e) {
+          throw ServerException(
+              message: 'Dev sign-in failed: ${e.message}. Enable Anonymous '
+                  'sign-ins in Supabase → Authentication → Sign In / Providers.');
+        }
+      }
       return true;
-    } else {
+    }
+    final response = await guardSupabase(() => supabase.auth.verifyOTP(
+          phone: _toE164(countryCode, phoneNumber),
+          token: otp,
+          type: OtpType.sms,
+        ));
+    if (response.session == null) {
       throw ServerException(message: 'Wrong code entered. Please try again.');
     }
+    return true;
   }
 
-  String _generateOtp() {
-    final random = Random();
-    final code = 100000 + random.nextInt(900000);
-    return code.toString();
+  // Only US numbers are supported.
+  String _toE164(String countryCode, String phoneNumber) {
+    if (countryCode != UsPhone.countryCode ||
+        UsPhone.validate(phoneNumber) != null) {
+      throw ServerException(message: 'Enter a valid US phone number');
+    }
+    return UsPhone.toE164(phoneNumber);
   }
 }

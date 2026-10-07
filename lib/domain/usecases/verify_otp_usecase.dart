@@ -10,6 +10,7 @@ class VerifyOtpUsecase {
   Future<Either<Failure, bool>> call(VerifyOtpParams params) {
     return repository.verifyOtp(
       phoneNumber: params.phoneNumber,
+      countryCode: params.countryCode,
       otp: params.otp,
     );
   }
@@ -17,10 +18,12 @@ class VerifyOtpUsecase {
 
 class VerifyOtpParams {
   final String phoneNumber;
+  final String countryCode;
   final String otp;
 
   VerifyOtpParams({
     required this.phoneNumber,
+    required this.countryCode,
     required this.otp,
   });
 }
