@@ -3,13 +3,19 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/config/env_config.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/error/exceptions.dart';
+import '../../../core/utils/logger.dart';
 import '../../../core/utils/us_phone.dart';
 import '../../models/app_version_model.dart';
 import '../local/dev_otp_service.dart';
 import 'supabase_guard.dart';
+import 'package:injectable/injectable.dart';
+import '../../../core/di/app_environment.dart';
 
 abstract class AppRemoteDataSource {
-  Future<AppVersionModel> getAppVersion({required String device});
+  Future<AppVersionModel> getAppVersion({
+    required String device,
+    required String versionNumber,
+  });
 
   Future<bool> sendOtp({
     required String phoneNumber,
@@ -23,26 +29,29 @@ abstract class AppRemoteDataSource {
   });
 }
 
+@LazySingleton(as: AppRemoteDataSource, env: [AppEnvironment.supabase])
 class AppRemoteDataSourceImpl implements AppRemoteDataSource {
   final SupabaseClient supabase;
   final DevOtpService devOtp;
 
-  AppRemoteDataSourceImpl({required this.supabase, DevOtpService? devOtp})
-      : devOtp = devOtp ?? DevOtpService();
+  AppRemoteDataSourceImpl({required this.supabase, required this.devOtp});
 
   @override
-  Future<AppVersionModel> getAppVersion({required String device}) async {
-    final Map<String, dynamic>? row = await guardSupabase(() => supabase
-        .from(ApiConstants.appVersionsTable)
-        .select()
-        .eq(ApiConstants.platform, device)
-        .maybeSingle());
+  Future<AppVersionModel> getAppVersion({
+    required String device,
+    required String versionNumber,
+  }) async {
+    final result = await guardSupabase(() => supabase.rpc(
+          ApiConstants.checkAppVersionRpc,
+          params: {'platform': device, 'appVersion': versionNumber},
+        ));
+    AppLogger.d('[API] check_app_version($device, $versionNumber) → $result');
 
-    if (row == null) {
-      throw ServerException(message: 'No version info for $device');
-    }
     try {
-      return AppVersionModel.fromJson(row);
+      return AppVersionModel.fromJson(
+        Map<String, dynamic>.from(result as Map),
+        platform: device,
+      );
     } catch (e) {
       throw ParsingException('Failed to parse app version response');
     }

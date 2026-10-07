@@ -10,6 +10,7 @@ import '../../widgets/fill_scroll_view.dart';
 import '../../widgets/app_icon_button.dart';
 import '../../widgets/primary_button.dart';
 import 'get_verified_screen.dart';
+import '../../widgets/app_alert.dart';
 
 class ChooseUserTypeScreen extends StatefulWidget {
   const ChooseUserTypeScreen({super.key});
@@ -32,11 +33,10 @@ class _ChooseUserTypeScreenState extends State<ChooseUserTypeScreen> {
         MaterialPageRoute(builder: (_) => const GetVerifiedScreen()),
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(provider.errorMessage ?? 'Could not save your role'),
-          backgroundColor: AppColors.statusSos,
-        ),
+      showAppAlert(
+        context,
+        type: AppAlertType.error,
+        message: provider.errorMessage ?? 'Could not save your role.',
       );
     }
   }

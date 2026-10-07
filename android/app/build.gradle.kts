@@ -42,3 +42,8 @@ android {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // On-device face detection for the selfie check (see MainActivity.kt).
+    implementation("com.google.mlkit:face-detection:16.1.7")
+}

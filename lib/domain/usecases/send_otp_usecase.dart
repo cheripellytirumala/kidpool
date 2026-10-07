@@ -1,7 +1,9 @@
 import 'package:dartz/dartz.dart';
 import '../../core/error/failures.dart';
 import '../repositories/app_repository.dart';
+import 'package:injectable/injectable.dart';
 
+@lazySingleton
 class SendOtpUsecase {
   final AppRepository repository;
 

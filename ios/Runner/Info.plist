@@ -25,7 +25,9 @@
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Kidpool uses the camera to scan your driver's license and take a selfie for identity verification.</string>
+	<string>Kidpool uses the camera to scan your driver's license, take a selfie for identity verification, and take a photo of your kids so drivers know who to pick up.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Kidpool lets you choose a photo of your kids so drivers know who to pick up.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Kidpool doesn't record audio; the camera component requires this declaration.</string>
 	<key>LSRequiresIPhoneOS</key>

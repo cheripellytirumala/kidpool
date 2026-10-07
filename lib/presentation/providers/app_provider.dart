@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 
+import '../../core/utils/logger.dart';
 import '../../domain/entities/app_version_entity.dart';
 import '../../domain/usecases/get_app_version_usecase.dart';
 import '../../domain/usecases/send_otp_usecase.dart';
 import '../../domain/usecases/verify_otp_usecase.dart';
+import 'package:injectable/injectable.dart';
 
+@injectable
 class AppProvider extends ChangeNotifier {
   final GetAppVersionUsecase getAppVersionUsecase;
   final SendOtpUsecase sendOtpUsecase;
@@ -42,6 +45,7 @@ class AppProvider extends ChangeNotifier {
 
     result.fold(
       (failure) {
+        AppLogger.e('[API] check_app_version failed: ${failure.message}');
         _errorMessage = failure.message;
         _isLoading = false;
         notifyListeners();

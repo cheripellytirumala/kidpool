@@ -5,7 +5,9 @@ import '../../core/error/failures.dart';
 import '../../domain/entities/app_version_entity.dart';
 import '../../domain/repositories/app_repository.dart';
 import '../data_sources/remote/app_remote_data_source.dart';
+import 'package:injectable/injectable.dart';
 
+@LazySingleton(as: AppRepository)
 class AppRepositoryImpl implements AppRepository {
   final AppRemoteDataSource remoteDataSource;
 
@@ -17,8 +19,11 @@ class AppRepositoryImpl implements AppRepository {
     required String versionNumber,
   }) async {
     try {
-      final model = await remoteDataSource.getAppVersion(device: device);
-      return Right(model.toEntity(currentVersion: versionNumber));
+      final model = await remoteDataSource.getAppVersion(
+        device: device,
+        versionNumber: versionNumber,
+      );
+      return Right(model.toEntity());
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message ?? 'Server Error'));
     } on NetworkException catch (e) {

@@ -1,4 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_colors.dart';
@@ -7,8 +11,11 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../domain/entities/new_kid_entity.dart';
 import '../../../domain/entities/school_entity.dart';
 import '../../providers/onboarding_provider.dart';
+import '../../widgets/app_alert.dart';
 import '../../widgets/app_avatar.dart';
+import '../../widgets/app_chip.dart';
 import '../../widgets/app_icon_button.dart';
+import '../../widgets/app_input.dart';
 import '../../widgets/primary_button.dart';
 import 'join_circle_screen.dart';
 
@@ -19,13 +26,14 @@ class AddKidsScreen extends StatefulWidget {
   State<AddKidsScreen> createState() => _AddKidsScreenState();
 }
 
-/// Controllers and the picked school for one kid card.
+/// Controllers, the picked school and the photo for one kid card.
 class _KidForm {
   final name = TextEditingController();
-  final grade = TextEditingController();
-  final className = TextEditingController();
+  final age = TextEditingController();
   final medical = TextEditingController();
+  final contact = TextEditingController();
   SchoolEntity? school;
+  File? photo;
 
   String get initials {
     final parts = name.text
@@ -36,6 +44,16 @@ class _KidForm {
     if (parts.isEmpty) return '';
     if (parts.length == 1) return parts.first[0].toUpperCase();
     return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
+  }
+
+  /// "Age 8 · Photo added" — only the parts we actually have.
+  String get summary {
+    final bits = <String>[
+      if (age.text.trim().isNotEmpty) 'Age ${age.text.trim()}',
+      if (school != null) school!.name,
+      if (photo != null) 'Photo added',
+    ];
+    return bits.isEmpty ? 'Add their details' : bits.join(' · ');
   }
 
   /// Null when a required field is missing.
@@ -53,17 +71,15 @@ class _KidForm {
       firstName: parts.first,
       lastName: parts.length > 1 ? parts.sublist(1).join(' ') : null,
       schoolId: selected.id,
-      grade: optional(grade),
-      className: optional(className),
       medicalNotes: optional(medical),
     );
   }
 
   void dispose() {
     name.dispose();
-    grade.dispose();
-    className.dispose();
+    age.dispose();
     medical.dispose();
+    contact.dispose();
   }
 }
 
@@ -95,39 +111,72 @@ class _AddKidsScreenState extends State<AddKidsScreen> {
     setState(() => _kids.removeAt(index).dispose());
   }
 
-  Future<void> _pickSchool(_KidForm kid) async {
-    final schools = context.read<OnboardingProvider>().schools;
-    if (schools.isEmpty) {
-      _showError('No schools are available yet. Please try again later.');
-      return;
-    }
-    final picked = await showModalBottomSheet<SchoolEntity>(
+  /// Lets the parent take a photo with the camera or pick one from the library.
+  Future<void> _pickPhoto(_KidForm kid) async {
+    final source = await showModalBottomSheet<ImageSource>(
       context: context,
       backgroundColor: AppColors.bgScreen,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
       ),
       builder: (context) => SafeArea(
-        child: ListView(
-          shrinkWrap: true,
+        child: Padding(
           padding: const EdgeInsets.symmetric(vertical: AppSpacing.x16),
-          children: [
-            for (final school in schools)
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
               ListTile(
                 contentPadding: AppSpacing.screenGutter,
-                leading:
-                    const Icon(Icons.school_outlined, color: AppColors.ink),
-                title: Text(school.name, style: AppTextStyles.bodyL),
-                trailing: school == kid.school
-                    ? const Icon(Icons.check, color: AppColors.ink)
-                    : null,
-                onTap: () => Navigator.pop(context, school),
+                leading: const Icon(Icons.photo_camera_outlined,
+                    color: AppColors.ink),
+                title: Text('Take photo', style: AppTextStyles.bodyL),
+                onTap: () => Navigator.pop(context, ImageSource.camera),
               ),
-          ],
+              ListTile(
+                contentPadding: AppSpacing.screenGutter,
+                leading: const Icon(Icons.photo_library_outlined,
+                    color: AppColors.ink),
+                title: Text('Choose from library', style: AppTextStyles.bodyL),
+                onTap: () => Navigator.pop(context, ImageSource.gallery),
+              ),
+              if (kid.photo != null)
+                ListTile(
+                  contentPadding: AppSpacing.screenGutter,
+                  leading: const Icon(Icons.delete_outline,
+                      color: AppColors.statusSos),
+                  title: Text(
+                    'Remove photo',
+                    style: AppTextStyles.bodyL
+                        .copyWith(color: AppColors.statusSos),
+                  ),
+                  onTap: () {
+                    setState(() => kid.photo = null);
+                    Navigator.pop(context);
+                  },
+                ),
+            ],
+          ),
         ),
       ),
     );
-    if (picked != null) setState(() => kid.school = picked);
+    if (source == null) return;
+
+    try {
+      final picked = await ImagePicker().pickImage(
+        source: source,
+        preferredCameraDevice: CameraDevice.rear,
+        maxWidth: 1024,
+        imageQuality: 85,
+      );
+      if (picked == null || !mounted) return;
+      setState(() => kid.photo = File(picked.path));
+    } on PlatformException catch (e) {
+      _showError(
+        e.code == 'camera_access_denied' || e.code == 'photo_access_denied'
+            ? 'Allow access in Settings to add a photo.'
+            : 'Could not open the ${source == ImageSource.camera ? 'camera' : 'photo library'}.',
+      );
+    }
   }
 
   Future<void> _handleSave() async {
@@ -155,9 +204,7 @@ class _AddKidsScreenState extends State<AddKidsScreen> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: AppColors.statusSos),
-    );
+    showAppAlert(context, type: AppAlertType.error, message: message);
   }
 
   @override
@@ -165,48 +212,109 @@ class _AddKidsScreenState extends State<AddKidsScreen> {
     return Scaffold(
       backgroundColor: AppColors.bgScreen,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: AppSpacing.screenGutter,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: AppSpacing.x8),
-              AppIconButton(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Top Bar — 16px gutter, the back button floats on its own row.
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.x16,
+                AppSpacing.x4,
+                AppSpacing.x16,
+                AppSpacing.x8,
+              ),
+              child: AppIconButton(
                 icon: Icons.arrow_back,
                 onPressed: () => Navigator.pop(context),
               ),
-              const SizedBox(height: AppSpacing.x32),
-              Text('Add your kids', style: AppTextStyles.headingH1),
-              const SizedBox(height: AppSpacing.x12),
-              Text(
-                'So other parents and teachers know exactly who to look out for.',
-                style: AppTextStyles.bodyM
-                    .copyWith(color: AppColors.textSecondary),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.x16,
+                  AppSpacing.x12,
+                  AppSpacing.x16,
+                  AppSpacing.x32,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header sits on an extra 8px so it aligns with the pills.
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.x8,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Add your kids', style: AppTextStyles.displayL),
+                          const SizedBox(height: AppSpacing.x12),
+                          Text(
+                            'So Ride Partners and teachers know exactly who to expect.',
+                            style: AppTextStyles.bodyL
+                                .copyWith(color: AppColors.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.x20),
+                    for (int i = 0; i < _kids.length; i++) ...[
+                      if (i > 0) const SizedBox(height: AppSpacing.x20),
+                      _buildKidCard(i),
+                    ],
+                    const SizedBox(height: AppSpacing.x20),
+                    _buildAddAnother(),
+                    const SizedBox(height: AppSpacing.x40),
+                    Consumer<OnboardingProvider>(
+                      builder: (context, provider, child) {
+                        return PrimaryButton(
+                          text: provider.isLoading
+                              ? 'Saving...'
+                              : 'Save & continue',
+                          onPressed: provider.isLoading ? null : _handleSave,
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: AppSpacing.x32),
-              for (int i = 0; i < _kids.length; i++) ...[
-                if (i > 0) const SizedBox(height: AppSpacing.x16),
-                _buildKidCard(i),
-              ],
-              const SizedBox(height: AppSpacing.x16),
-              // Outline = low emphasis, per the Button guidance.
-              PrimaryButton(
-                text: '+  Add another child',
-                style: AppButtonStyle.outline,
-                onPressed: _addKid,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Ink circle + lime plus, per the "Add another" row in the design.
+  Widget _buildAddAnother() {
+    return Padding(
+      padding: const EdgeInsets.only(left: AppSpacing.x8),
+      child: GestureDetector(
+        onTap: _addKid,
+        behavior: HitTestBehavior.opaque,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              alignment: Alignment.center,
+              decoration: const BoxDecoration(
+                color: AppColors.ink,
+                shape: BoxShape.circle,
               ),
-              const SizedBox(height: AppSpacing.x40),
-              Consumer<OnboardingProvider>(
-                builder: (context, provider, child) {
-                  return PrimaryButton(
-                    text: provider.isLoading ? 'Saving...' : 'Save & continue',
-                    onPressed: provider.isLoading ? null : _handleSave,
-                  );
-                },
+              child: const Icon(Icons.add, size: 18, color: AppColors.lime),
+            ),
+            const SizedBox(width: AppSpacing.x8),
+            Flexible(
+              child: Text(
+                'Add another child',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.labelL,
               ),
-              const SizedBox(height: AppSpacing.x24),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -215,160 +323,183 @@ class _AddKidsScreenState extends State<AddKidsScreen> {
   Widget _buildKidCard(int index) {
     final kid = _kids[index];
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.x24),
+      padding: const EdgeInsets.all(AppSpacing.x16),
       decoration: BoxDecoration(
         color: AppColors.bgSurface,
         borderRadius: AppRadius.xlAll,
       ),
       child: Column(
         children: [
-          // Rebuild the header as the name is typed.
+          // Rebuild the header as the name and age are typed.
           ListenableBuilder(
-            listenable: kid.name,
+            listenable: Listenable.merge([kid.name, kid.age]),
             builder: (context, _) => Row(
               children: [
-                AppAvatar(initials: kid.initials),
-                const SizedBox(width: AppSpacing.x16),
+                // The design renders the kid avatar as a dark photo slot.
+                AppAvatar(
+                  initials: kid.initials,
+                  backgroundColor: AppColors.charcoal,
+                  foregroundColor: AppColors.textOnDarkMuted,
+                  image: kid.photo == null ? null : FileImage(kid.photo!),
+                ),
+                const SizedBox(width: AppSpacing.x8),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        kid.name.text.trim().isEmpty
-                            ? 'Child ${index + 1}'
-                            : kid.name.text.trim(),
+                      // The name is edited in place, as the design shows it.
+                      TextField(
+                        controller: kid.name,
+                        textCapitalization: TextCapitalization.words,
                         style: AppTextStyles.headingH3,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        kid.school?.name ?? 'Pick their school below',
-                        style: AppTextStyles.bodyS.copyWith(
-                          color: AppColors.textSecondary,
+                        cursorColor: AppColors.ink,
+                        decoration: InputDecoration(
+                          filled: false,
+                          hintText: "Child's name",
+                          hintStyle: AppTextStyles.headingH3
+                              .copyWith(color: AppColors.textSecondary),
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          isDense: true,
+                          contentPadding: EdgeInsets.zero,
                         ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        kid.summary,
+                        style: AppTextStyles.bodyS
+                            .copyWith(color: AppColors.textSecondary),
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
                 ),
-                if (index > 0)
+                const SizedBox(width: AppSpacing.x8),
+                Flexible(
+                  child: AppChip(
+                    label: kid.photo == null ? 'Add Photo' : 'Change Photo',
+                    selected: true,
+                    onTap: () => _pickPhoto(kid),
+                  ),
+                ),
+                // The design shows a single kid; extras need a way back out.
+                if (index > 0) ...[
+                  const SizedBox(width: AppSpacing.x8),
                   GestureDetector(
                     onTap: () => _removeKid(index),
-                    child: Container(
-                      width: 32,
-                      height: 32,
-                      alignment: Alignment.center,
-                      decoration: const BoxDecoration(
-                        color: AppColors.bgSurfaceStrong,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.close,
-                        size: 16,
-                        color: AppColors.ink,
-                      ),
+                    child: const Icon(
+                      Icons.close,
+                      size: 20,
+                      color: AppColors.textSecondary,
                     ),
                   ),
+                ],
               ],
             ),
           ),
-          const SizedBox(height: AppSpacing.x24),
-          _buildField(kid.name, Icons.person_outline, 'Full name',
-              capitalization: TextCapitalization.words),
-          const SizedBox(height: AppSpacing.x12),
-          GestureDetector(
-            onTap: () => _pickSchool(kid),
-            child: _buildRow(
-              Icons.school_outlined,
-              Text(
-                kid.school?.name ?? 'School',
-                style: AppTextStyles.bodyM.copyWith(
-                  color: kid.school == null
-                      ? AppColors.textSecondary
-                      : AppColors.ink,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-              trailing: const Icon(
-                Icons.keyboard_arrow_down,
-                size: 20,
-                color: AppColors.ink,
-              ),
-            ),
+          const SizedBox(height: 14),
+          _schoolDropdown(kid),
+          const SizedBox(height: 14),
+          _cardInput(
+            icon: Icons.groups_outlined,
+            hint: 'Age',
+            controller: kid.age,
+            keyboardType: TextInputType.number,
           ),
-          const SizedBox(height: AppSpacing.x12),
-          Row(
+          const SizedBox(height: 14),
+          _cardInput(
+            icon: Icons.favorite_border,
+            hint: 'Medical notes',
+            controller: kid.medical,
+            capitalization: TextCapitalization.sentences,
+          ),
+          const SizedBox(height: 14),
+          _cardInput(
+            icon: Icons.call_outlined,
+            hint: 'Emergency contact',
+            controller: kid.contact,
+            capitalization: TextCapitalization.words,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Input pill as it appears inside a surface card: white fill, ink icon.
+  Widget _cardInput({
+    required IconData icon,
+    required String hint,
+    required TextEditingController controller,
+    TextInputType? keyboardType,
+    TextCapitalization capitalization = TextCapitalization.none,
+  }) {
+    return AppInput(
+      controller: controller,
+      hintText: hint,
+      icon: icon,
+      keyboardType: keyboardType,
+      capitalization: capitalization,
+      backgroundColor: AppColors.bgScreen,
+      iconColor: AppColors.ink,
+    );
+  }
+
+  /// School picker styled as an Input pill on a surface card.
+  Widget _schoolDropdown(_KidForm kid) {
+    return Consumer<OnboardingProvider>(
+      builder: (context, provider, _) {
+        final schools = provider.schools;
+        return Container(
+          height: 60,
+          padding: const EdgeInsets.symmetric(horizontal: 22),
+          decoration: BoxDecoration(
+            color: AppColors.bgScreen,
+            borderRadius: AppRadius.pill,
+          ),
+          child: Row(
             children: [
-              Expanded(
-                child: _buildField(kid.grade, Icons.numbers, 'Grade'),
-              ),
+              const Icon(Icons.school_outlined, size: 24, color: AppColors.ink),
               const SizedBox(width: AppSpacing.x12),
               Expanded(
-                child: _buildField(
-                  kid.className,
-                  Icons.keyboard_arrow_right,
-                  'Class',
-                  capitalization: TextCapitalization.characters,
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<SchoolEntity>(
+                    value: schools.contains(kid.school) ? kid.school : null,
+                    isExpanded: true,
+                    icon: const Icon(Icons.keyboard_arrow_down,
+                        color: AppColors.ink),
+                    dropdownColor: AppColors.bgScreen,
+                    borderRadius: AppRadius.lgAll,
+                    style: AppTextStyles.bodyL,
+                    hint: Text(
+                      schools.isEmpty && provider.isLoading
+                          ? 'Loading schools...'
+                          : 'School',
+                      style: AppTextStyles.bodyL
+                          .copyWith(color: AppColors.textSecondary),
+                    ),
+                    items: [
+                      for (final school in schools)
+                        DropdownMenuItem(
+                          value: school,
+                          child: Text(
+                            school.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                    ],
+                    onChanged: schools.isEmpty
+                        ? null
+                        : (school) => setState(() => kid.school = school),
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.x12),
-          _buildField(
-            kid.medical,
-            Icons.medical_services_outlined,
-            'Allergies or medical notes',
-            capitalization: TextCapitalization.sentences,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildField(
-    TextEditingController controller,
-    IconData icon,
-    String hint, {
-    TextCapitalization capitalization = TextCapitalization.none,
-  }) {
-    return _buildRow(
-      icon,
-      TextField(
-        controller: controller,
-        textCapitalization: capitalization,
-        style: AppTextStyles.bodyM,
-        cursorColor: AppColors.ink,
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle:
-              AppTextStyles.bodyM.copyWith(color: AppColors.textSecondary),
-          border: InputBorder.none,
-          enabledBorder: InputBorder.none,
-          focusedBorder: InputBorder.none,
-          isDense: true,
-          contentPadding: EdgeInsets.zero,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRow(IconData icon, Widget child, {Widget? trailing}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.x16,
-        vertical: AppSpacing.x12,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.bgScreen,
-        borderRadius: AppRadius.smAll,
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: AppColors.ink),
-          const SizedBox(width: AppSpacing.x12),
-          Expanded(child: child),
-          if (trailing != null) trailing,
-        ],
-      ),
+        );
+      },
     );
   }
 }

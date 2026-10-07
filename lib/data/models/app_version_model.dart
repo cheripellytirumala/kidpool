@@ -1,57 +1,46 @@
 import '../../domain/entities/app_version_entity.dart';
 
+/// Result of the `check_app_version` RPC. The server compares versions, so
+/// all that comes back is "ok" or "force_update" plus the update details.
 class AppVersionModel {
   final String platform;
-  final String latestVersion;
-  final String minSupportedVersion;
+  final bool isForceUpdate;
+  final String? minSupportedVersion;
   final String? storeUrl;
   final String? updateMessage;
 
   AppVersionModel({
     required this.platform,
-    required this.latestVersion,
-    required this.minSupportedVersion,
+    required this.isForceUpdate,
+    this.minSupportedVersion,
     this.storeUrl,
     this.updateMessage,
   });
 
-  factory AppVersionModel.fromJson(Map<String, dynamic> json) {
+  factory AppVersionModel.fromJson(
+    Map<String, dynamic> json, {
+    required String platform,
+  }) {
+    final status = json['status'] as String;
+    if (status != 'ok' && status != 'force_update') {
+      throw FormatException('Unknown version status: $status');
+    }
     return AppVersionModel(
-      platform: json['platform'] as String,
-      latestVersion: json['latest_version'] as String,
-      minSupportedVersion: json['min_supported_version'] as String,
-      storeUrl: json['store_url'] as String?,
-      updateMessage: json['update_message'] as String?,
+      platform: platform,
+      isForceUpdate: status == 'force_update',
+      minSupportedVersion: json['minSupportedVersion'] as String?,
+      storeUrl: json['storeUrl'] as String?,
+      updateMessage: json['message'] as String?,
     );
   }
 
-  AppVersionEntity toEntity({required String currentVersion}) {
+  AppVersionEntity toEntity() {
     return AppVersionEntity(
       platform: platform,
-      latestVersion: latestVersion,
+      isForceUpdate: isForceUpdate,
       minSupportedVersion: minSupportedVersion,
       storeUrl: storeUrl,
       updateMessage: updateMessage,
-      isUpdateAvailable: _compareVersions(currentVersion, latestVersion) < 0,
-      isForceUpdate: _compareVersions(currentVersion, minSupportedVersion) < 0,
     );
-  }
-
-  /// Compares dotted versions like "1.2.10"; ignores any "+build" suffix.
-  static int _compareVersions(String a, String b) {
-    List<int> parse(String v) => v
-        .split('+')
-        .first
-        .split('.')
-        .map((p) => int.tryParse(p) ?? 0)
-        .toList();
-    final pa = parse(a);
-    final pb = parse(b);
-    for (var i = 0; i < 3; i++) {
-      final x = i < pa.length ? pa[i] : 0;
-      final y = i < pb.length ? pb[i] : 0;
-      if (x != y) return x.compareTo(y);
-    }
-    return 0;
   }
 }
