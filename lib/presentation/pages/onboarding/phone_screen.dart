@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/utils/us_phone.dart';
 import '../../providers/app_provider.dart';
 import '../../widgets/app_icon_button.dart';
 import '../../widgets/app_input.dart';
@@ -19,15 +20,7 @@ class PhoneScreen extends StatefulWidget {
 
 class _PhoneScreenState extends State<PhoneScreen> {
   final TextEditingController _phoneController = TextEditingController();
-  String _selectedCountryCode = '+1';
   String? _errorText;
-
-  final List<Map<String, String>> _countries = [
-    {'code': '+1', 'name': 'USA', 'flag': '🇺🇸'},
-    {'code': '+44', 'name': 'UK', 'flag': '🇬🇧'},
-    {'code': '+91', 'name': 'India', 'flag': '🇮🇳'},
-    {'code': '+61', 'name': 'Australia', 'flag': '🇦🇺'},
-  ];
 
   @override
   void dispose() {
@@ -36,13 +29,10 @@ class _PhoneScreenState extends State<PhoneScreen> {
   }
 
   void _validateAndSend() async {
-    final phone = _phoneController.text.trim();
-    if (phone.isEmpty) {
-      setState(() => _errorText = 'Please enter your phone number');
-      return;
-    }
-    if (phone.length < 7) {
-      setState(() => _errorText = 'Please enter a valid phone number');
+    final phone = _phoneController.text;
+    final error = UsPhone.validate(phone);
+    if (error != null) {
+      setState(() => _errorText = error);
       return;
     }
 
@@ -51,7 +41,7 @@ class _PhoneScreenState extends State<PhoneScreen> {
     final provider = context.read<AppProvider>();
     final success = await provider.sendOtp(
       phoneNumber: phone,
-      countryCode: _selectedCountryCode,
+      countryCode: UsPhone.countryCode,
     );
 
     if (success && mounted) {
@@ -59,7 +49,7 @@ class _PhoneScreenState extends State<PhoneScreen> {
         MaterialPageRoute(
           builder: (_) => VerifyScreen(
             phoneNumber: phone,
-            countryCode: _selectedCountryCode,
+            countryCode: UsPhone.countryCode,
           ),
         ),
       );
@@ -101,33 +91,16 @@ class _PhoneScreenState extends State<PhoneScreen> {
                 controller: _phoneController,
                 icon: Icons.phone,
                 hintText: '(415) 555-0142',
-                keyboardType: TextInputType.phone,
+                keyboardType: TextInputType.number,
+                inputFormatters: [UsPhoneInputFormatter()],
                 errorText: _errorText,
                 onChanged: (_) {
                   if (_errorText != null) setState(() => _errorText = null);
                 },
-                leading: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _selectedCountryCode,
-                    isDense: true,
-                    borderRadius: AppRadius.mdAll,
-                    icon: const Icon(Icons.keyboard_arrow_down, size: 16),
-                    style: AppTextStyles.bodyL,
-                    onChanged: (String? newValue) {
-                      if (newValue != null) {
-                        setState(() => _selectedCountryCode = newValue);
-                      }
-                    },
-                    items: _countries.map<DropdownMenuItem<String>>((country) {
-                      return DropdownMenuItem<String>(
-                        value: country['code'],
-                        child: Text(
-                          '${country['flag']} ${country['code']}',
-                          style: AppTextStyles.bodyL,
-                        ),
-                      );
-                    }).toList(),
-                  ),
+                // US numbers only, so the country code is fixed.
+                leading: Text(
+                  '🇺🇸 ${UsPhone.countryCode}',
+                  style: AppTextStyles.bodyL,
                 ),
               ),
               const SizedBox(height: AppSpacing.x24),

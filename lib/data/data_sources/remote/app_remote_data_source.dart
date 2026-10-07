@@ -1,8 +1,11 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/config/env_config.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/error/exceptions.dart';
+import '../../../core/utils/us_phone.dart';
 import '../../models/app_version_model.dart';
+import 'dev_otp_service.dart';
 import 'supabase_guard.dart';
 
 abstract class AppRemoteDataSource {
@@ -22,8 +25,10 @@ abstract class AppRemoteDataSource {
 
 class AppRemoteDataSourceImpl implements AppRemoteDataSource {
   final SupabaseClient supabase;
+  final DevOtpService devOtp;
 
-  AppRemoteDataSourceImpl({required this.supabase});
+  AppRemoteDataSourceImpl({required this.supabase, DevOtpService? devOtp})
+      : devOtp = devOtp ?? DevOtpService();
 
   @override
   Future<AppVersionModel> getAppVersion({required String device}) async {
@@ -48,9 +53,12 @@ class AppRemoteDataSourceImpl implements AppRemoteDataSource {
     required String phoneNumber,
     required String countryCode,
   }) async {
-    await guardSupabase(() => supabase.auth.signInWithOtp(
-          phone: _toE164(countryCode, phoneNumber),
-        ));
+    final phone = _toE164(countryCode, phoneNumber);
+    if (EnvConfig.useDevOtp) {
+      devOtp.send(phone);
+      return true;
+    }
+    await guardSupabase(() => supabase.auth.signInWithOtp(phone: phone));
     return true;
   }
 
@@ -60,6 +68,15 @@ class AppRemoteDataSourceImpl implements AppRemoteDataSource {
     required String countryCode,
     required String otp,
   }) async {
+    if (EnvConfig.useDevOtp) {
+      devOtp.verify(_toE164(countryCode, phoneNumber), otp);
+      // Gives onboarding a real user id when anonymous sign-ins are enabled;
+      // otherwise continue without a session.
+      try {
+        await supabase.auth.signInAnonymously();
+      } catch (_) {}
+      return true;
+    }
     final response = await guardSupabase(() => supabase.auth.verifyOTP(
           phone: _toE164(countryCode, phoneNumber),
           token: otp,
@@ -71,9 +88,12 @@ class AppRemoteDataSourceImpl implements AppRemoteDataSource {
     return true;
   }
 
+  // Only US numbers are supported.
   String _toE164(String countryCode, String phoneNumber) {
-    final digits = phoneNumber.replaceAll(RegExp(r'\D'), '');
-    final code = countryCode.replaceAll(RegExp(r'\D'), '');
-    return '+$code$digits';
+    if (countryCode != UsPhone.countryCode ||
+        UsPhone.validate(phoneNumber) != null) {
+      throw ServerException(message: 'Enter a valid US phone number');
+    }
+    return UsPhone.toE164(phoneNumber);
   }
 }

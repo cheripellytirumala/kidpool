@@ -3,6 +3,11 @@ enum Environment { dev, staging, prod }
 class EnvConfig {
   static Environment environment = Environment.dev;
 
+  // Dev only: OTP codes are generated locally and printed to the debug
+  // console instead of being texted, so no SMS provider is needed.
+  // Staging/prod send real SMS through Supabase phone auth.
+  static bool get useDevOtp => environment == Environment.dev;
+
   static String get supabaseUrl {
     switch (environment) {
       case Environment.dev:
