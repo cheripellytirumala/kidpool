@@ -54,7 +54,9 @@ class _JoinCircleScreenState extends State<JoinCircleScreen> {
     final circles = provider.circles;
     final success = circles.isEmpty
         ? await provider.startCircle()
-        : await provider.joinCircle(circles.first);
+        : await provider.joinCircle(
+            circles.firstWhere((c) => c.isMember, orElse: () => circles.first),
+          );
     if (!mounted) return;
 
     if (success) {
