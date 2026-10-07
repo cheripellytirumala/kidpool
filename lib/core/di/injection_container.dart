@@ -1,6 +1,8 @@
 import 'package:get_it/get_it.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../data/data_sources/local/local_app_data_source.dart';
+import '../../data/data_sources/local/local_onboarding_data_source.dart';
 import '../../data/data_sources/remote/app_remote_data_source.dart';
 import '../../data/data_sources/remote/onboarding_remote_data_source.dart';
 import '../../data/repositories/app_repository_impl.dart';
@@ -58,6 +60,14 @@ Future<void> init() async {
   );
 
   // Data Sources
+  if (!EnvConfig.useSupabase) {
+    sl.registerLazySingleton<AppRemoteDataSource>(() => LocalAppDataSource());
+    sl.registerLazySingleton<OnboardingRemoteDataSource>(
+      () => LocalOnboardingDataSource(),
+    );
+    return;
+  }
+
   sl.registerLazySingleton<AppRemoteDataSource>(
     () => AppRemoteDataSourceImpl(supabase: sl()),
   );

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../widgets/fill_scroll_view.dart';
 import '../../widgets/app_badge.dart';
 import '../../widgets/primary_button.dart';
 import 'phone_screen.dart';
@@ -17,7 +18,8 @@ class WelcomeScreen extends StatelessWidget {
       body: SafeArea(
         child: Padding(
           padding: AppSpacing.screenGutter,
-          child: Column(
+          child: FillScrollView(
+              child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: AppSpacing.x40),
@@ -76,7 +78,7 @@ class WelcomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.x24),
             ],
-          ),
+          )),
         ),
       ),
     );

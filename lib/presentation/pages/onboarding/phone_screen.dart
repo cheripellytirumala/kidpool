@@ -6,6 +6,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/us_phone.dart';
 import '../../providers/app_provider.dart';
+import '../../widgets/fill_scroll_view.dart';
 import '../../widgets/app_icon_button.dart';
 import '../../widgets/app_input.dart';
 import '../../widgets/primary_button.dart';
@@ -67,7 +68,8 @@ class _PhoneScreenState extends State<PhoneScreen> {
       body: SafeArea(
         child: Padding(
           padding: AppSpacing.screenGutter,
-          child: Column(
+          child: FillScrollView(
+              child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: AppSpacing.x8),
@@ -158,7 +160,7 @@ class _PhoneScreenState extends State<PhoneScreen> {
               ),
               const SizedBox(height: AppSpacing.x24),
             ],
-          ),
+          )),
         ),
       ),
     );

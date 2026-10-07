@@ -44,6 +44,36 @@
       "languageVersion": "3.1"
     },
     {
+      "name": "camera",
+      "rootUri": "file:///Users/iosdeveloper/.pub-cache/hosted/pub.dev/camera-0.12.0+2",
+      "packageUri": "lib/",
+      "languageVersion": "3.10"
+    },
+    {
+      "name": "camera_android_camerax",
+      "rootUri": "file:///Users/iosdeveloper/.pub-cache/hosted/pub.dev/camera_android_camerax-0.7.2",
+      "packageUri": "lib/",
+      "languageVersion": "3.9"
+    },
+    {
+      "name": "camera_avfoundation",
+      "rootUri": "file:///Users/iosdeveloper/.pub-cache/hosted/pub.dev/camera_avfoundation-0.10.3+1",
+      "packageUri": "lib/",
+      "languageVersion": "3.11"
+    },
+    {
+      "name": "camera_platform_interface",
+      "rootUri": "file:///Users/iosdeveloper/.pub-cache/hosted/pub.dev/camera_platform_interface-2.14.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.10"
+    },
+    {
+      "name": "camera_web",
+      "rootUri": "file:///Users/iosdeveloper/.pub-cache/hosted/pub.dev/camera_web-0.3.5+6",
+      "packageUri": "lib/",
+      "languageVersion": "3.10"
+    },
+    {
       "name": "characters",
       "rootUri": "file:///Users/iosdeveloper/.pub-cache/hosted/pub.dev/characters-1.4.1",
       "packageUri": "lib/",
@@ -72,6 +102,12 @@
       "rootUri": "file:///Users/iosdeveloper/.pub-cache/hosted/pub.dev/convert-3.1.2",
       "packageUri": "lib/",
       "languageVersion": "3.4"
+    },
+    {
+      "name": "cross_file",
+      "rootUri": "file:///Users/iosdeveloper/.pub-cache/hosted/pub.dev/cross_file-0.3.5+5",
+      "packageUri": "lib/",
+      "languageVersion": "3.10"
     },
     {
       "name": "crypto",
@@ -126,6 +162,12 @@
       "rootUri": "file:///Users/iosdeveloper/.pub-cache/hosted/pub.dev/flutter_lints-3.0.2",
       "packageUri": "lib/",
       "languageVersion": "3.1"
+    },
+    {
+      "name": "flutter_plugin_android_lifecycle",
+      "rootUri": "file:///Users/iosdeveloper/.pub-cache/hosted/pub.dev/flutter_plugin_android_lifecycle-2.0.35",
+      "packageUri": "lib/",
+      "languageVersion": "3.10"
     },
     {
       "name": "flutter_test",
@@ -456,6 +498,12 @@
       "rootUri": "file:///Users/iosdeveloper/.pub-cache/hosted/pub.dev/stream_channel-2.1.4",
       "packageUri": "lib/",
       "languageVersion": "3.3"
+    },
+    {
+      "name": "stream_transform",
+      "rootUri": "file:///Users/iosdeveloper/.pub-cache/hosted/pub.dev/stream_transform-2.1.2",
+      "packageUri": "lib/",
+      "languageVersion": "3.4"
     },
     {
       "name": "string_scanner",

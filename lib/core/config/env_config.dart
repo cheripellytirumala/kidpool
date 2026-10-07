@@ -3,6 +3,11 @@ enum Environment { dev, staging, prod }
 class EnvConfig {
   static Environment environment = Environment.dev;
 
+  // The app isn't linked to a Supabase project yet: onboarding runs on
+  // in-memory local data sources and OTP codes are printed to the console.
+  // Set to true (and update the URL/key below) once a project is configured.
+  static const bool useSupabase = false;
+
   // Dev only: OTP codes are generated locally and printed to the debug
   // console instead of being texted, so no SMS provider is needed.
   // Staging/prod send real SMS through Supabase phone auth.

@@ -84,10 +84,23 @@ class GetVerifiedScreen extends StatelessWidget {
                     _backgroundRow(context, provider),
                     const SizedBox(height: 10),
                     _hasCarRow(provider),
-                    const SizedBox(height: 10),
-                    _drivingRow(context, provider),
-                    const SizedBox(height: 10),
-                    _vehicleRow(context, provider),
+                    // Driving record and vehicle only apply to parents who
+                    // drive, so they appear and disappear with the toggle.
+                    AnimatedSize(
+                      duration: const Duration(milliseconds: 240),
+                      curve: Curves.easeOut,
+                      alignment: Alignment.topCenter,
+                      child: provider.hasCar
+                          ? Column(
+                              children: [
+                                const SizedBox(height: 10),
+                                _drivingRow(context, provider),
+                                const SizedBox(height: 10),
+                                _vehicleRow(context, provider),
+                              ],
+                            )
+                          : const SizedBox(width: double.infinity),
+                    ),
                     const SizedBox(height: AppSpacing.x20),
                     PrimaryButton(
                       text: 'Continue',
@@ -118,10 +131,13 @@ class GetVerifiedScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                '${provider.completedCount} of ${provider.totalCount} complete',
-                style: AppTextStyles.labelM,
+              Flexible(
+                child: Text(
+                  '${provider.completedCount} of ${provider.totalCount} complete',
+                  style: AppTextStyles.labelM,
+                ),
               ),
+              const SizedBox(width: AppSpacing.x8),
               Text(
                 provider.timeRemaining,
                 style: AppTextStyles.labelM

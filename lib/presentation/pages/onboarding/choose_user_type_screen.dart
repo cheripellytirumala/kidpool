@@ -6,6 +6,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../domain/entities/user_role.dart';
 import '../../providers/onboarding_provider.dart';
+import '../../widgets/fill_scroll_view.dart';
 import '../../widgets/app_icon_button.dart';
 import '../../widgets/primary_button.dart';
 import 'get_verified_screen.dart';
@@ -47,7 +48,8 @@ class _ChooseUserTypeScreenState extends State<ChooseUserTypeScreen> {
       body: SafeArea(
         child: Padding(
           padding: AppSpacing.screenGutter,
-          child: Column(
+          child: FillScrollView(
+              child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: AppSpacing.x8),
@@ -90,7 +92,7 @@ class _ChooseUserTypeScreenState extends State<ChooseUserTypeScreen> {
               ),
               const SizedBox(height: AppSpacing.x24),
             ],
-          ),
+          )),
         ),
       ),
     );

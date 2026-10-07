@@ -5,7 +5,7 @@ import '../../../core/constants/api_constants.dart';
 import '../../../core/error/exceptions.dart';
 import '../../../core/utils/us_phone.dart';
 import '../../models/app_version_model.dart';
-import 'dev_otp_service.dart';
+import '../local/dev_otp_service.dart';
 import 'supabase_guard.dart';
 
 abstract class AppRemoteDataSource {
@@ -70,11 +70,17 @@ class AppRemoteDataSourceImpl implements AppRemoteDataSource {
   }) async {
     if (EnvConfig.useDevOtp) {
       devOtp.verify(_toE164(countryCode, phoneNumber), otp);
-      // Gives onboarding a real user id when anonymous sign-ins are enabled;
-      // otherwise continue without a session.
-      try {
-        await supabase.auth.signInAnonymously();
-      } catch (_) {}
+      // Onboarding writes rows owned by the current user, so dev needs a real
+      // session. Requires Anonymous sign-ins to be enabled in Supabase Auth.
+      if (supabase.auth.currentSession == null) {
+        try {
+          await supabase.auth.signInAnonymously();
+        } on AuthException catch (e) {
+          throw ServerException(
+              message: 'Dev sign-in failed: ${e.message}. Enable Anonymous '
+                  'sign-ins in Supabase → Authentication → Sign In / Providers.');
+        }
+      }
       return true;
     }
     final response = await guardSupabase(() => supabase.auth.verifyOTP(
