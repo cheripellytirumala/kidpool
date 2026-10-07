@@ -32,4 +32,10 @@ class AppColors {
 
   // Border used by the Outline button (1.5px, brand/ink).
   static const Color borderStrong = ink;
+
+  // border/subtle — note cards and dividers on light surfaces.
+  static const Color borderSubtle = Color(0xFFE6E6E6);
+
+  // border/dark — dividers on bg/inverse surfaces.
+  static const Color borderDark = charcoal;
 }

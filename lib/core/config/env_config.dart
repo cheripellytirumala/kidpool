@@ -3,10 +3,9 @@ enum Environment { dev, staging, prod }
 class EnvConfig {
   static Environment environment = Environment.dev;
 
-  // The app isn't linked to a Supabase project yet: onboarding runs on
-  // in-memory local data sources and OTP codes are printed to the console.
-  // Set to true (and update the URL/key below) once a project is configured.
-  static const bool useSupabase = false;
+  // When false, onboarding runs on in-memory local data sources instead of
+  // the Supabase project below.
+  static const bool useSupabase = true;
 
   // Dev only: OTP codes are generated locally and printed to the debug
   // console instead of being texted, so no SMS provider is needed.
@@ -18,7 +17,7 @@ class EnvConfig {
       case Environment.dev:
       case Environment.staging:
       case Environment.prod:
-        return 'https://qktomioeszdqrgpcacvm.supabase.co';
+        return 'https://cojraqxramlirnepncrd.supabase.co';
     }
   }
 
@@ -29,7 +28,7 @@ class EnvConfig {
       case Environment.dev:
       case Environment.staging:
       case Environment.prod:
-        return 'sb_publishable_ZpTwf-Gf-QWtAyI2bJzIpg_b_OKxli4';
+        return 'sb_publishable_fNCY2oyYmmvkCYKO8ZbAIg_7UJIhC0a';
     }
   }
 }

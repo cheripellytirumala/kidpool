@@ -9,8 +9,6 @@ import '../../widgets/app_badge.dart';
 import '../../widgets/app_icon_button.dart';
 import '../../widgets/app_toggle.dart';
 import '../../widgets/primary_button.dart';
-import '../verification/background_check_screen.dart';
-import '../verification/background_check_status_screen.dart';
 import '../verification/driving_record_screen.dart';
 import '../verification/scan_photo_id_screen.dart';
 import '../verification/vehicle_details_screen.dart';
@@ -104,7 +102,7 @@ class GetVerifiedScreen extends StatelessWidget {
                     const SizedBox(height: AppSpacing.x20),
                     PrimaryButton(
                       text: 'Continue',
-                      onPressed: provider.allComplete
+                      onPressed: provider.requiredComplete
                           ? () => Navigator.of(context).push(
                                 MaterialPageRoute(
                                   builder: (_) => const VerifiedSuccessScreen(),
@@ -178,49 +176,52 @@ class GetVerifiedScreen extends StatelessWidget {
   // ------------------------------------------------------------------- rows
 
   Widget _photoIdRow(BuildContext context, VerificationProvider provider) {
-    final done = provider.photoId == VerificationStatus.done;
+    final status = provider.photoId;
     return _CheckRow(
       icon: Icons.person,
       title: 'Photo ID and Proof',
-      subtitle: done ? 'Driver license scanned' : "Scan your driver's license",
-      status: provider.photoId,
-      trailing: done
-          ? const AppBadge(label: 'Done', showDot: false)
-          : const Icon(Icons.chevron_right, color: AppColors.textSecondary),
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const ScanPhotoIdScreen()),
-      ),
+      subtitle: switch (status) {
+        VerificationStatus.pending => "Scan your driver's license",
+        VerificationStatus.inReview => 'Photos sent · our team is reviewing',
+        VerificationStatus.done => 'Driver license verified',
+      },
+      status: status,
+      trailing: _statusTrailing(status),
+      // Once submitted, the photos are with the backend team.
+      onTap: status == VerificationStatus.pending
+          ? () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ScanPhotoIdScreen()),
+              )
+          : null,
     );
   }
 
+  /// Run by the backend team once the ID photos are in; nothing to fill in.
   Widget _backgroundRow(BuildContext context, VerificationProvider provider) {
     final status = provider.backgroundCheck;
     return _CheckRow(
       icon: Icons.verified_user_outlined,
       title: 'Background check',
       subtitle: switch (status) {
-        VerificationStatus.pending => 'Takes about 2 minutes',
+        VerificationStatus.pending => 'Starts after your photo ID',
         VerificationStatus.inReview => 'Usually ready in 24 hours',
         VerificationStatus.done => 'Cleared',
       },
       status: status,
-      trailing: switch (status) {
+      trailing: status == VerificationStatus.pending
+          ? const SizedBox.shrink()
+          : _statusTrailing(status),
+    );
+  }
+
+  Widget _statusTrailing(VerificationStatus status) => switch (status) {
         VerificationStatus.pending =>
           const Icon(Icons.chevron_right, color: AppColors.textSecondary),
         VerificationStatus.inReview =>
           const AppBadge(label: 'In review', tone: AppBadgeTone.dark),
         VerificationStatus.done =>
           const AppBadge(label: 'Done', showDot: false),
-      },
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => status == VerificationStatus.pending
-              ? const BackgroundCheckScreen()
-              : const BackgroundCheckStatusScreen(),
-        ),
-      ),
-    );
-  }
+      };
 
   Widget _drivingRow(BuildContext context, VerificationProvider provider) {
     final done = provider.drivingRecord == VerificationStatus.done;
@@ -291,7 +292,7 @@ class _CheckRow extends StatelessWidget {
   final String subtitle;
   final VerificationStatus status;
   final Widget trailing;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   const _CheckRow({
     required this.icon,
@@ -299,7 +300,7 @@ class _CheckRow extends StatelessWidget {
     required this.subtitle,
     required this.status,
     required this.trailing,
-    required this.onTap,
+    this.onTap,
   });
 
   Color get _circleBackground => switch (status) {

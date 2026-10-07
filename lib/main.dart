@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'core/di/injection_container.dart' as di;
 import 'core/theme/app_theme.dart';
@@ -23,7 +25,9 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => di.sl<AppProvider>()),
         ChangeNotifierProvider(create: (_) => di.sl<OnboardingProvider>()),
-        ChangeNotifierProvider(create: (_) => VerificationProvider()),
+        ChangeNotifierProvider(
+          create: (_) => di.sl<VerificationProvider>(),
+        ),
       ],
       child: MaterialApp(
         title: 'Kidpool',
@@ -50,13 +54,27 @@ class _SplashNavigatorState extends State<SplashNavigator> {
   }
 
   void _navigateToNext() async {
-    // Show splash for 2 seconds
-    await Future.delayed(const Duration(seconds: 2));
+    // Check the app version while the splash shows for 2 seconds.
+    await Future.wait([
+      _checkAppVersion(),
+      Future.delayed(const Duration(seconds: 2)),
+    ]);
     if (mounted) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const WelcomeScreen()),
       );
     }
+  }
+
+  Future<void> _checkAppVersion() async {
+    final info = await PackageInfo.fromPlatform();
+    if (!mounted) return;
+    final device =
+        defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android';
+    await context.read<AppProvider>().fetchAppVersion(
+          device: device,
+          versionNumber: info.version,
+        );
   }
 
   @override

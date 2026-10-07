@@ -12,6 +12,7 @@ import '../../widgets/app_icon_button.dart';
 import '../../widgets/fill_scroll_view.dart';
 import '../../widgets/primary_button.dart';
 import 'choose_user_type_screen.dart';
+import '../../widgets/app_alert.dart';
 
 class VerifyScreen extends StatefulWidget {
   final String? phoneNumber;
@@ -74,12 +75,17 @@ class _VerifyScreenState extends State<VerifyScreen> {
       }
       _focusNodes.first.requestFocus();
       _startTimer();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('A new code is on its way')),
+      showAppAlert(
+        context,
+        type: AppAlertType.success,
+        title: 'Code sent',
+        message: 'A new code is on its way.',
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(provider.errorMessage ?? 'Failed to resend')),
+      showAppAlert(
+        context,
+        type: AppAlertType.error,
+        message: provider.errorMessage ?? 'Failed to resend the code.',
       );
     }
   }
@@ -87,8 +93,11 @@ class _VerifyScreenState extends State<VerifyScreen> {
   void _handleVerify() async {
     String otp = _controllers.map((c) => c.text).join();
     if (otp.length < 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter the full 6-digit code')),
+      showAppAlert(
+        context,
+        type: AppAlertType.warning,
+        title: 'Code incomplete',
+        message: 'Please enter the full 6-digit code.',
       );
       return;
     }
@@ -105,11 +114,11 @@ class _VerifyScreenState extends State<VerifyScreen> {
         MaterialPageRoute(builder: (_) => const ChooseUserTypeScreen()),
       );
     } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(provider.errorMessage ?? 'Wrong code entered'),
-          backgroundColor: AppColors.statusSos,
-        ),
+      showAppAlert(
+        context,
+        type: AppAlertType.error,
+        title: "Code didn't match",
+        message: provider.errorMessage ?? 'Wrong code entered.',
       );
     }
   }

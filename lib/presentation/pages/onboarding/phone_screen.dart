@@ -11,6 +11,7 @@ import '../../widgets/app_icon_button.dart';
 import '../../widgets/app_input.dart';
 import '../../widgets/primary_button.dart';
 import 'verify_screen.dart';
+import '../../widgets/app_alert.dart';
 
 class PhoneScreen extends StatefulWidget {
   const PhoneScreen({super.key});
@@ -55,8 +56,11 @@ class _PhoneScreenState extends State<PhoneScreen> {
         ),
       );
     } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(provider.errorMessage ?? 'Failed to send OTP')),
+      showAppAlert(
+        context,
+        type: AppAlertType.error,
+        title: "Couldn't send the code",
+        message: provider.errorMessage ?? 'Failed to send OTP.',
       );
     }
   }
