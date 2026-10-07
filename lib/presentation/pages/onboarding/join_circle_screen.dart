@@ -54,20 +54,14 @@ class _JoinCircleScreenState extends State<JoinCircleScreen> {
     final circles = provider.circles;
     final success = circles.isEmpty
         ? await provider.startCircle()
-        : await provider.joinCircle(circles.first);
+        : await provider.joinCircle(
+            circles.firstWhere((c) => c.isMember, orElse: () => circles.first),
+          );
     if (!mounted) return;
 
     if (success) {
-      await showAppAlert(
-        context,
-        type: AppAlertType.success,
-        title: provider.ownsJoinedCircle ? 'Circle created' : 'Request sent',
-        message: provider.ownsJoinedCircle
-            ? 'Your circle is ready. Other parents can now ask to join.'
-            : 'The circle owner will approve you.',
-      );
-      if (!mounted) return;
-      // Onboarding is done: Home becomes the root of the app.
+      // Onboarding is done: Home becomes the root of the app. Home shows
+      // whether the circle is still waiting on the owner's approval.
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const HomeScreen()),
         (route) => false,
