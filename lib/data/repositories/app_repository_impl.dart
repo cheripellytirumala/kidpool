@@ -76,4 +76,17 @@ class AppRepositoryImpl implements AppRepository {
       return Left(ServerFailure(e.toString()));
     }
   }
+
+  @override
+  Future<Either<Failure, bool>> isRegistered() async {
+    try {
+      return Right(await remoteDataSource.isRegistered());
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message ?? 'Server Error'));
+    } on NetworkException catch (e) {
+      return Left(NetworkFailure(e.message));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
 }

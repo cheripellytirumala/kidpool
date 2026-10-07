@@ -27,6 +27,10 @@ abstract class AppRemoteDataSource {
     required String countryCode,
     required String otp,
   });
+
+  /// True when the signed-in account has finished onboarding (it belongs to
+  /// a circle, the last onboarding step).
+  Future<bool> isRegistered();
 }
 
 @LazySingleton(as: AppRemoteDataSource, env: [AppEnvironment.supabase])
@@ -78,18 +82,9 @@ class AppRemoteDataSourceImpl implements AppRemoteDataSource {
     required String otp,
   }) async {
     if (EnvConfig.useDevOtp) {
-      devOtp.verify(_toE164(countryCode, phoneNumber), otp);
-      // Onboarding writes rows owned by the current user, so dev needs a real
-      // session. Requires Anonymous sign-ins to be enabled in Supabase Auth.
-      if (supabase.auth.currentSession == null) {
-        try {
-          await supabase.auth.signInAnonymously();
-        } on AuthException catch (e) {
-          throw ServerException(
-              message: 'Dev sign-in failed: ${e.message}. Enable Anonymous '
-                  'sign-ins in Supabase → Authentication → Sign In / Providers.');
-        }
-      }
+      final phone = _toE164(countryCode, phoneNumber);
+      devOtp.verify(phone, otp);
+      await _devSignIn(phone);
       return true;
     }
     final response = await guardSupabase(() => supabase.auth.verifyOTP(
@@ -101,6 +96,44 @@ class AppRemoteDataSourceImpl implements AppRemoteDataSource {
       throw ServerException(message: 'Wrong code entered. Please try again.');
     }
     return true;
+  }
+
+  /// Dev stand-in for phone auth: an anonymous account tagged with the
+  /// number (user metadata `dev_phone`), so the same number keeps landing in
+  /// the same account on this device and a different number gets a new one.
+  /// An untagged session (from before tagging existed) is claimed by the
+  /// first number verified on it. Requires Anonymous sign-ins in Supabase.
+  Future<void> _devSignIn(String phone) async {
+    try {
+      final user = supabase.auth.currentUser;
+      final tagged = user?.userMetadata?[_devPhoneKey] as String?;
+      if (user != null && tagged == phone) return;
+      if (user != null && tagged == null) {
+        await supabase.auth
+            .updateUser(UserAttributes(data: {_devPhoneKey: phone}));
+        return;
+      }
+      if (user != null) await supabase.auth.signOut();
+      await supabase.auth.signInAnonymously(data: {_devPhoneKey: phone});
+    } on AuthException catch (e) {
+      throw ServerException(
+          message: 'Dev sign-in failed: ${e.message}. Enable Anonymous '
+              'sign-ins in Supabase → Authentication → Sign In / Providers.');
+    }
+  }
+
+  static const String _devPhoneKey = 'dev_phone';
+
+  @override
+  Future<bool> isRegistered() async {
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) return false;
+    final rows = await guardSupabase(() => supabase
+        .from(ApiConstants.circleMembersTable)
+        .select('circle_id')
+        .eq('user_id', userId)
+        .limit(1));
+    return rows.isNotEmpty;
   }
 
   // Only US numbers are supported.

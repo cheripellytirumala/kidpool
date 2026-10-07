@@ -11,6 +11,7 @@ import '../../providers/app_provider.dart';
 import '../../widgets/app_icon_button.dart';
 import '../../widgets/fill_scroll_view.dart';
 import '../../widgets/primary_button.dart';
+import '../home/home_screen.dart';
 import 'choose_user_type_screen.dart';
 import '../../widgets/app_alert.dart';
 
@@ -110,9 +111,7 @@ class _VerifyScreenState extends State<VerifyScreen> {
     );
 
     if (success && mounted) {
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const ChooseUserTypeScreen()),
-      );
+      await _continueAfterSignIn(provider);
     } else if (mounted) {
       showAppAlert(
         context,
@@ -141,6 +140,31 @@ class _VerifyScreenState extends State<VerifyScreen> {
     }
     if (value.isEmpty && index > 0) {
       _focusNodes[index - 1].requestFocus();
+    }
+  }
+
+  /// A number that already finished onboarding goes straight to Home;
+  /// a new one continues the sign-up flow.
+  Future<void> _continueAfterSignIn(AppProvider provider) async {
+    final registered = await provider.checkRegistered();
+    if (!mounted) return;
+    if (registered == null) {
+      showAppAlert(
+        context,
+        type: AppAlertType.error,
+        message: provider.errorMessage ?? "Couldn't check your account.",
+      );
+      return;
+    }
+    if (registered) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        (route) => false,
+      );
+    } else {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const ChooseUserTypeScreen()),
+      );
     }
   }
 
