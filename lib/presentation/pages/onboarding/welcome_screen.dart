@@ -4,7 +4,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../widgets/fill_scroll_view.dart';
-import '../../widgets/app_badge.dart';
+import '../../widgets/app_route_map.dart';
 import '../../widgets/primary_button.dart';
 import 'phone_screen.dart';
 
@@ -32,34 +32,7 @@ class WelcomeScreen extends StatelessWidget {
                     .copyWith(color: AppColors.textSecondary),
               ),
               const Spacer(),
-              Container(
-                width: double.infinity,
-                height: 300,
-                decoration: BoxDecoration(
-                  color: AppColors.bgInverse,
-                  borderRadius: AppRadius.xlAll,
-                ),
-                child: Stack(
-                  children: [
-                    // Placeholder for the dark map / route artwork.
-                    Center(
-                      child: Icon(
-                        Icons.map_outlined,
-                        color: AppColors.lime.withOpacity(0.2),
-                        size: 200,
-                      ),
-                    ),
-                    const Positioned(
-                      bottom: AppSpacing.x40,
-                      left: AppSpacing.x20,
-                      child: AppBadge(
-                        label: 'Emma started at 8:02 AM',
-                        tone: AppBadgeTone.lime,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              const AppRouteMap(),
               const Spacer(),
               PrimaryButton(
                 text: 'Get started',
