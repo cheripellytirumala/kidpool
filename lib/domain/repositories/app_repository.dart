@@ -19,4 +19,7 @@ abstract class AppRepository {
     required String countryCode,
     required String otp,
   });
+
+  /// Whether the signed-in account has already finished onboarding.
+  Future<Either<Failure, bool>> isRegistered();
 }

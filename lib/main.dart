@@ -7,6 +7,7 @@ import 'core/di/injection_container.dart' as di;
 import 'core/theme/app_theme.dart';
 import 'presentation/providers/app_provider.dart';
 import 'presentation/providers/home_provider.dart';
+import 'presentation/providers/places_provider.dart';
 import 'presentation/providers/ride_provider.dart';
 import 'presentation/providers/onboarding_provider.dart';
 import 'presentation/providers/verification_provider.dart';
@@ -31,6 +32,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => di.sl<OnboardingProvider>()),
         ChangeNotifierProvider(create: (_) => di.sl<HomeProvider>()),
         ChangeNotifierProvider(create: (_) => di.sl<RideProvider>()),
+        ChangeNotifierProvider(create: (_) => di.sl<PlacesProvider>()),
         ChangeNotifierProvider(
           create: (_) => di.sl<VerificationProvider>(),
         ),

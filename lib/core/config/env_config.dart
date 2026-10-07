@@ -31,4 +31,12 @@ class EnvConfig {
         return 'sb_publishable_fNCY2oyYmmvkCYKO8ZbAIg_7UJIhC0a';
     }
   }
+
+  // Google Places (New) key for the pickup address search. Supplied at build
+  // time so it stays out of source control:
+  //   flutter run --dart-define=GOOGLE_PLACES_API_KEY=AIza...
+  // Restrict it to the Places API (New) in Google Cloud. Empty → the search
+  // screen says it isn't set up and the typed address is used as-is.
+  static const String googlePlacesApiKey =
+      String.fromEnvironment('GOOGLE_PLACES_API_KEY');
 }
