@@ -9,4 +9,8 @@ class ApiConstants {
   static const String kidHealthTable = 'kid_health';
   static const String circlesTable = 'circles';
   static const String circleMembersTable = 'circle_members';
+  static const String kidGuardiansTable = 'kid_guardians';
+  static const String tripsTable = 'trips';
+  static const String tripKidsTable = 'trip_kids';
+  static const String tripSeriesTable = 'trip_series';
 }
