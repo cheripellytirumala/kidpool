@@ -1,16 +1,13 @@
+/// Only what exists in the Supabase project. Features without a table here
+/// (schools, kids, circles, rides) run on in-memory data sources.
 class ApiConstants {
+  // Edge functions
+  static const String requestOtpFunction = 'request-otp';
+  static const String verifyOtpFunction = 'verify-otp';
+
   // RPCs
   static const String checkAppVersionRpc = 'check_app_version';
 
   // Tables
   static const String profilesTable = 'profiles';
-  static const String schoolsTable = 'schools';
-  static const String kidsTable = 'kids';
-  static const String kidHealthTable = 'kid_health';
-  static const String circlesTable = 'circles';
-  static const String circleMembersTable = 'circle_members';
-  static const String kidGuardiansTable = 'kid_guardians';
-  static const String tripsTable = 'trips';
-  static const String tripKidsTable = 'trip_kids';
-  static const String tripSeriesTable = 'trip_series';
 }

@@ -1,15 +1,14 @@
+import 'dart:io';
+
+import 'package:injectable/injectable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../../core/config/env_config.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/error/exceptions.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/utils/us_phone.dart';
 import '../../models/app_version_model.dart';
-import '../local/dev_otp_service.dart';
 import 'supabase_guard.dart';
-import 'package:injectable/injectable.dart';
-import '../../../core/di/app_environment.dart';
 
 abstract class AppRemoteDataSource {
   Future<AppVersionModel> getAppVersion({
@@ -28,17 +27,22 @@ abstract class AppRemoteDataSource {
     required String otp,
   });
 
-  /// True when the signed-in account has finished onboarding (it belongs to
-  /// a circle, the last onboarding step).
+  /// True when the signed-in account already existed and has a role.
   Future<bool> isRegistered();
 }
 
-@LazySingleton(as: AppRemoteDataSource, env: [AppEnvironment.supabase])
+/// Phone sign-in through the `request-otp` / `verify-otp` edge functions;
+/// the session they return is handed to the Supabase client so table
+/// queries run as the signed-in user.
+@LazySingleton(as: AppRemoteDataSource)
 class AppRemoteDataSourceImpl implements AppRemoteDataSource {
   final SupabaseClient supabase;
-  final DevOtpService devOtp;
 
-  AppRemoteDataSourceImpl({required this.supabase, required this.devOtp});
+  AppRemoteDataSourceImpl({required this.supabase});
+
+  /// From the last successful verify-otp call; kept in memory only.
+  bool _isNewUser = true;
+  String? _role;
 
   @override
   Future<AppVersionModel> getAppVersion({
@@ -66,12 +70,13 @@ class AppRemoteDataSourceImpl implements AppRemoteDataSource {
     required String phoneNumber,
     required String countryCode,
   }) async {
-    final phone = _toE164(countryCode, phoneNumber);
-    if (EnvConfig.useDevOtp) {
-      devOtp.send(phone);
-      return true;
+    final json = await _invoke(ApiConstants.requestOtpFunction, {
+      'phone': _toE164(countryCode, phoneNumber),
+    });
+    // Only present while the function runs in demo mode (no SMS provider).
+    if (json['otp'] case final String otp) {
+      AppLogger.w('[DEMO OTP] Code: $otp (valid 5 min)');
     }
-    await guardSupabase(() => supabase.auth.signInWithOtp(phone: phone));
     return true;
   }
 
@@ -81,59 +86,66 @@ class AppRemoteDataSourceImpl implements AppRemoteDataSource {
     required String countryCode,
     required String otp,
   }) async {
-    if (EnvConfig.useDevOtp) {
-      final phone = _toE164(countryCode, phoneNumber);
-      devOtp.verify(phone, otp);
-      await _devSignIn(phone);
-      return true;
-    }
-    final response = await guardSupabase(() => supabase.auth.verifyOTP(
-          phone: _toE164(countryCode, phoneNumber),
-          token: otp,
-          type: OtpType.sms,
-        ));
-    if (response.session == null) {
+    final json = await _invoke(ApiConstants.verifyOtpFunction, {
+      'phone': _toE164(countryCode, phoneNumber),
+      'otp': otp,
+    });
+    final refreshToken = (json['session'] as Map?)?['refreshToken'];
+    if (json['status'] != 'verified' || refreshToken is! String) {
       throw ServerException(message: 'Wrong code entered. Please try again.');
     }
+    await guardSupabase(() => supabase.auth.setSession(refreshToken));
+    _isNewUser = json['isNewUser'] as bool? ?? true;
+    _role = json['role'] as String?;
     return true;
   }
 
-  /// Dev stand-in for phone auth: an anonymous account tagged with the
-  /// number (user metadata `dev_phone`), so the same number keeps landing in
-  /// the same account on this device and a different number gets a new one.
-  /// An untagged session (from before tagging existed) is claimed by the
-  /// first number verified on it. Requires Anonymous sign-ins in Supabase.
-  Future<void> _devSignIn(String phone) async {
+  @override
+  Future<bool> isRegistered() async =>
+      supabase.auth.currentUser != null && !_isNewUser && _role != null;
+
+  Future<Map<String, dynamic>> _invoke(
+    String function,
+    Map<String, dynamic> body,
+  ) async {
     try {
-      final user = supabase.auth.currentUser;
-      final tagged = user?.userMetadata?[_devPhoneKey] as String?;
-      if (user != null && tagged == phone) return;
-      if (user != null && tagged == null) {
-        await supabase.auth
-            .updateUser(UserAttributes(data: {_devPhoneKey: phone}));
-        return;
-      }
-      if (user != null) await supabase.auth.signOut();
-      await supabase.auth.signInAnonymously(data: {_devPhoneKey: phone});
-    } on AuthException catch (e) {
-      throw ServerException(
-          message: 'Dev sign-in failed: ${e.message}. Enable Anonymous '
-              'sign-ins in Supabase → Authentication → Sign In / Providers.');
+      final response = await supabase.functions.invoke(function, body: body);
+      AppLogger.d('[API] $function → ${response.status}');
+      return Map<String, dynamic>.from(response.data as Map);
+    } on FunctionsFetchException {
+      throw NetworkException('No internet connection');
+    } on FunctionException catch (e) {
+      AppLogger.d('[API] $function → ${e.status} ${e.details}');
+      final details = e.details is Map ? e.details as Map : const {};
+      throw ServerException(message: _messageFor(details));
+    } on SocketException {
+      throw NetworkException('No internet connection');
     }
   }
 
-  static const String _devPhoneKey = 'dev_phone';
-
-  @override
-  Future<bool> isRegistered() async {
-    final userId = supabase.auth.currentUser?.id;
-    if (userId == null) return false;
-    final rows = await guardSupabase(() => supabase
-        .from(ApiConstants.circleMembersTable)
-        .select('circle_id')
-        .eq('user_id', userId)
-        .limit(1));
-    return rows.isNotEmpty;
+  static String _messageFor(Map details) {
+    switch (details['error']) {
+      case 'invalid_phone':
+        return 'Enter a valid US phone number';
+      case 'resend_too_soon':
+        final wait = details['retryAfter'];
+        return wait == null
+            ? 'Please wait before requesting a new code.'
+            : 'Please wait $wait seconds before requesting a new code.';
+      case 'sms_not_configured':
+        return "We can't send text messages right now. Please try again later.";
+      case 'invalid_otp_format':
+        return 'Enter the 6-digit code.';
+      case 'invalid_otp':
+        return 'Wrong code entered. Please try again.';
+      case 'otp_not_found':
+      case 'otp_expired':
+        return 'Code expired. Please request a new one.';
+      case 'too_many_attempts':
+        return 'Too many wrong attempts. Please request a new code.';
+      default:
+        return 'Something went wrong. Please try again.';
+    }
   }
 
   // Only US numbers are supported.
